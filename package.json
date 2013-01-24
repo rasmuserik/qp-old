@@ -4,7 +4,10 @@
     "author": "Rasmus Erik",
     "homepage": "http://github.com/rasmuserik/qp",
     "description": "personal utility library",
-    "repositories": [{"type": "git", "url": "git@github.com:rasmuserik/qp.git"}],
+    "repositories": [{
+        "type": "git",
+        "url": "git@github.com:rasmuserik/qp.git"
+    }],
     "contributors": [{
         "name": "Rasmus Erik",
         "web": "http://rasmuserik.com"
