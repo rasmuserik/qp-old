@@ -1,0 +1,24 @@
+{
+    "name": "qp",
+    "version": "0.0.1",
+    "author": "Rasmus Erik",
+    "homepage": "http://github.com/rasmuserik/qp",
+    "description": "personal utility library",
+    "repositories": [{"type": "git", "url": "git@github.com:rasmuserik/qp.git"}],
+    "contributors": [{
+        "name": "Rasmus Erik",
+        "web": "http://rasmuserik.com"
+    }],
+    "dependencies": {},
+    "engines": {
+        "node": "*"
+    },
+    "main": "qp.js",
+    "bugs": {
+        "url": "http://github.com/rasmuserik/qp/issues"
+    },
+    "scripts": {
+        "start": "node qp.js run",
+        "test": "node qp.js test"
+    }
+}
