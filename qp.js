@@ -22,14 +22,23 @@ if (typeof exports === "undefined") {
     // }}}
     // HXML {{{
     qp.HXML = function(xml) {
+        if(typeof xml === "string") {
+        } 
+        if(Array.isArray(xml)) {
+        }
     }
     // }}}
     // route {{{
     if (qp.nodejs) {
         qp.nextTick(function() {
-
+            nodeMain();
         });
     }
+
+    function nodeMain() {
+        var args = process.argv;
+    }
+
     // }}}
     // file end {{{
 })();
