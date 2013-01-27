@@ -25,13 +25,13 @@ if (typeof exports === "undefined") {
         });
         return a;
     }; //}}}
-    exports.listpp = function(list, indent) { //{{{
+    qp.listpp = function(list, indent) { //{{{
         indent = indent || "  ";
         if (typeof list === "string") {
             return list;
         };
         var result = list.map(function(elem) {
-            return exports.listpp(elem, indent + "  ");
+            return qp.listpp(elem, indent + "  ");
         });
         var len = 0;
         result.forEach(function(elem) {
@@ -43,7 +43,7 @@ if (typeof exports === "undefined") {
             return "[" + result.join("\n" + indent) + "]";
         };
     }; //}}}
-    exports.list2obj = function(arr) { // {{{
+    qp.list2obj = function(arr) { // {{{
         var result = {};
         arr.forEach(function(elem) {
             result[elem] = true;
@@ -106,7 +106,7 @@ if (typeof exports === "undefined") {
             setTimeout(run, Math.max(0, delay - (Date.now() - lastRun)));
         };
     }; //}}}
-    exports.asyncArrayForEach = function(arr, fn, done) { //{{{
+    qp.asyncArrayForEach = function(arr, fn, done) { //{{{
         var count = arr.length;
         var cb = function() {
             if (count === 0) {
@@ -119,7 +119,7 @@ if (typeof exports === "undefined") {
             fn(key, cb);
         });
     }; //}}}
-    exports.name2url = function(name) { //{{{
+    qp.name2url = function(name) { //{{{
         return name.replace(RegExp("[^a-zA-Z0-9_-]", "g"), function(c) {
             var subs = {
                 "Æ": "AE",
@@ -152,7 +152,7 @@ if (typeof exports === "undefined") {
                 require("fs").writeFile(process.env.HOME + "/data/local.sqlite3", JSON.stringify(db, null, "  "));
             });
             var lastSync = 0;
-            exports.local = {
+            qp.local = {
                 set: function(key, val) {
                     db[key] = val;
                     syncLocalStorage();
@@ -163,7 +163,7 @@ if (typeof exports === "undefined") {
             };
         })();
     } else if (typeof localStorage !== "undefined") {
-        exports.local = {
+        qp.local = {
             set: function(key, val) {
                 localStorage.setItem(key, val);
             },
@@ -204,15 +204,15 @@ if (typeof exports === "undefined") {
         return result;
     }; //}}}
     // emptyObject {{{
-    exports.emptyObject = function(obj) {
+    qp.emptyObject = function(obj) {
         return Object.keys(obj).length === 0;
     }; //}}}
     // strStartsWith {{{
-    exports.strStartsWith = function(str1, str2) {
+    qp.strStartsWith = function(str1, str2) {
         return str1.slice(0, str2.length) === str2;
     }; //}}}
     // objForEach {{{
-    exports.objForEach = function(obj, fn) {
+    qp.objForEach = function(obj, fn) {
         Object.keys(obj).forEach(function(key) {
             fn(key, obj[key]);
         });
@@ -221,21 +221,21 @@ if (typeof exports === "undefined") {
     if (qp.nodejs) {
         var fs = require("fs");
         var dirs = {};
-        exports.mkdir = function(path) {
+        qp.mkdir = function(path) {
             if (!dirs[path] && !fs.existsSync(path)) {
                 path = path.split("/");
                 while (!path[path.length - 1]) {
                     path.pop();
                 };
-                exports.mkdir(path.slice(0, -1).join("/"));
+                qp.mkdir(path.slice(0, -1).join("/"));
                 fs.mkdirSync(path.join("/"));
                 dirs[path] = true;
             };
         };
-        exports.cp = function(src, dst, callback) {
+        qp.cp = function(src, dst, callback) {
             require("util").pump(fs.createReadStream(src), fs.createWriteStream(dst), callback);
         };
-        exports.mtime = function(filename) {
+        qp.mtime = function(filename) {
             return qp.trycatch(function() {
                 return fs.statSync(filename).mtime.getTime();
             }, function() {
@@ -243,7 +243,7 @@ if (typeof exports === "undefined") {
             });
         };
     }; //}}}
-    exports.shuffleArray = function(arr) { //{{{
+    qp.shuffleArray = function(arr) { //{{{
         var i = arr.length;
         while (i) {
             --i;
@@ -254,15 +254,15 @@ if (typeof exports === "undefined") {
         };
         return arr;
     }; //}}}
-    exports.arrayPickRandom = function(arr) { //{{{
+    qp.arrayPickRandom = function(arr) { //{{{
         return arr[Math.random() * arr.length | 0];
     }; //}}}
     // save/load json {{{
     if (qp.nodejs) {
-        exports.saveJSON = function(filename, content, callback) {
+        qp.saveJSON = function(filename, content, callback) {
             require("fs").writeFile(filename, JSON.stringify(content), callback);
         };
-        exports.loadJSONSync = function(filename, defaultVal) {
+        qp.loadJSONSync = function(filename, defaultVal) {
             if (!defaultVal) {
                 defaultVal = function(e) {
                     return {
@@ -277,6 +277,236 @@ if (typeof exports === "undefined") {
                 return JSON.parse(require("fs").readFileSync(filename, "utf8"));
             }, fn);
         };
+    }; //}}}
+    // }}}
+    // qp.V2d {{{
+    qp.V2d = function(x, y) { //{{{
+        this.x = x;
+        this.y = y;
+    }; //}}}
+    var V2d = qp.V2d;
+    V2d.prototype.add = function(v) { //{{{
+        return new V2d(this.x + v.x, this.y + v.y);
+    }; //}}}
+    V2d.prototype.sub = function(v) { //{{{
+        return new V2d(this.x - v.x, this.y - v.y);
+    }; //}}}
+    V2d.prototype.scale = function(a) { //{{{
+        return new V2d(this.x * a, this.y * a);
+    }; //}}}
+    V2d.prototype.length = function() { //{{{
+        return Math.sqrt(this.x * this.x + this.y * this.y);
+    }; //}}}
+    V2d.prototype.dot = function(v) { //{{{
+        return this.x * v.x + this.y * v.y;
+    }; //}}}
+    V2d.prototype.norm = function() { //{{{
+        var len = this.length();
+        return this.scale(len ? 1 / len : 0);
+    }; //}}}
+    V2d.prototype.dist = function(v) { //{{{
+        var d = this.sub(v);
+        return Math.sqrt(d.dot(d));
+    }; //}}}
+    V2d.prototype.neg = function(v) { //{{{
+        return new V2d(-this.x, -this.y);
+    }; //}}}
+    //}}}
+    // Graph algorithms {{{
+    // # Spring-based graph layout {{{
+    // This is experimental code, not really intended for reading yet.
+    qp.init = function(app) {
+        var canvas = app.canvas;
+        canvas.width = app.w;
+        canvas.height = app.h;
+        var running = true;
+        var basegraph = {};
+        var i = 0;
+        while (i < 100) {
+            basegraph[i] = [];
+            basegraph[Math.random() * i | 0].push(i);
+            ++i;
+        };
+        //basegraph[0].push('0,0');
+        Object.keys(basegraph).forEach(function(id) {
+            basegraph[id] = {
+                id: id,
+                force: new V2d(0, 0),
+                velocity: new V2d(Math.random() - 0.5, Math.random() - 0.5),
+                pos: new V2d(Math.random(), Math.random()),
+                children: basegraph[id],
+            };
+        });
+        var graph = [];
+        Object.keys(basegraph).forEach(function(id) {
+            basegraph[id].children = basegraph[id].children.map(function(child) {
+                return basegraph[child];
+            });
+            graph.push(basegraph[id]);
+        });
+        var spring = .1;
+        var repuls = 1;
+        var dampening = 0.90;
+        var maxspeed = 0.01;
+        var run = function() {
+            // ### Calculate force
+            graph.forEach(function(elem) {
+                elem.force = new V2d(0, 0);
+            });
+            // #### Edges/springs
+            graph.forEach(function(a) {
+                a.children.forEach(function(b) {
+                    var v = b.pos.sub(a.pos);
+                    var force = v.scale(spring * Math.min(v.length(), 100));
+                    a.force = a.force.add(force);
+                    b.force = b.force.add(force.neg());
+                });
+            });
+            // #### Collisions
+            graph.forEach(function(a) {
+                graph.forEach(function(b) {
+                    if (a.id !== b.id) {
+                        var v = a.pos.sub(b.pos).norm();
+                        var d = b.pos.dist(a.pos);
+                        if (d < Math.PI / 2) {
+                            //a.force = a.force.add( v.scale(repuls * Math.cos(d)));
+                            a.force = a.force.add(v.scale(repuls * (Math.PI / 2 - d)));
+                        };
+                    };
+                });
+            });
+            // ### Calculate velocity
+            graph.forEach(function(elem) {
+                elem.velocity = elem.velocity.add(elem.force);
+                elem.velocity = elem.velocity.scale(dampening);
+                if (elem.velocity.length() > maxspeed) {
+                    elem.velocity.scale(maxspeed - elem.velocity.length());
+                };
+            });
+            // ### Calculate position
+            graph.forEach(function(elem) {
+                var rescale = elem.velocity.length();
+                elem.pos = elem.pos.add(elem.velocity.scale(1 / Math.sqrt(1 + rescale)));
+            });
+            // ### Blit and repeat
+            drawGraph();
+            if (running) {
+                setTimeout(run, 0);
+            };
+        };
+        var runno = 0;
+        var drawGraph = function() {
+            /*
+        if((++runno) & 15) {
+            return undefined;
+        }
+        */
+            var minx = Math.min.apply(undefined, graph.map(function(e) {
+                return e.pos.x;
+            }));
+            var miny = Math.min.apply(undefined, graph.map(function(e) {
+                return e.pos.y;
+            }));
+            var maxx = Math.max.apply(undefined, graph.map(function(e) {
+                return e.pos.x;
+            }));
+            var maxy = Math.max.apply(undefined, graph.map(function(e) {
+                return e.pos.y;
+            }));
+            var ctx = canvas.getContext("2d");
+            var transform = function(a) {
+                return new V2d((a.x - minx) / (maxx - minx) * canvas.width, (a.y - miny) / (maxy - miny) * canvas.height);
+            };
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.beginPath();
+            var line = function(a, b) {
+                ctx.lineWidth = 3;
+                var p1 = transform(a);
+                ctx.moveTo(p1.x, p1.y);
+                var p2 = transform(b);
+                ctx.lineTo(p2.x, p2.y);
+            };
+            var drawdot = function(a) {
+                var p = transform(a.pos);
+                var sz = 24;
+                ctx.lineWidth = 1;
+                ctx.strokeRect(p.x - sz, p.y - sz, sz * 2, sz * 2);
+                ctx.fillStyle = "rgba(255,255,255,.7)";
+                ctx.fillRect(p.x - sz + 1, p.y - sz + 1, sz * 2 - 2, sz * 2 - 2);
+                ctx.fillStyle = "#000";
+                ctx.fillText(a.id, p.x - 17, p.y);
+            };
+            graph.forEach(function(a) {
+                a.children.forEach(function(b) {
+                    line(a.pos, b.pos);
+                });
+            });
+            ctx.stroke();
+            graph.forEach(function(a) {
+                drawdot(a);
+            });
+            //ctx.fillText(passt, 0, 20);
+            //ctx.fillText(JSON.stringify(graph.map(function(b){return graph[0].pos.dist(b.pos);})), 0,40);
+        };
+        run();
+    }; //}}}
+    qp.graphUpdateParents = function(graph) { //{{{
+        util.objForEach(graph, function(_, node) {
+            node.parents = {};
+        });
+        util.objForEach(graph, function(nodeId, node) {
+            util.objForEach(node.children, function(key, _) {
+                graph[key].parents[nodeId] = true;
+            });
+        });
+    }; //}}}
+    qp.traverseDAG = function(graph) { //{{{
+        var result = [];
+        qp.graphUpdateParents(graph);
+        var visited = {};
+        var prevLength = -1;
+        while (result.length !== prevLength) {
+            prevLength = result.length;
+            util.objForEach(graph, function(nodeId, node) {
+                if (!visited[nodeId]) {
+                    var ok = true;
+                    Object.keys(node.parents).forEach(function(parentId) {
+                        if (!visited[parentId]) {
+                            ok = false;
+                        };
+                    });
+                    if (ok) {
+                        result.push(nodeId);
+                        visited[nodeId] = true;
+                    };
+                };
+            });
+        };
+        return result;
+    }; //}}}
+    qp.ensureNode = function(graph, name) { //{{{
+        if (!graph[name]) {
+            graph[name] = {
+                id: name,
+                children: {}
+            };
+        };
+    }; //}}}
+    qp.addEdge = function(graph, from, to) { //{{{
+        qp.ensureNode(graph, from);
+        qp.ensureNode(graph, to);
+        graph[from].children[to] = graph[from].children[to] || {};
+    }; //}}}
+    qp.testGraph = function(test) { //{{{
+        var g = {};
+        qp.addEdge(g, "a", "b");
+        qp.addEdge(g, "b", "c");
+        qp.addEdge(g, "a", "c");
+        test.assertEqual(JSON.stringify(qp.traverseDAG(g)), "[\"a\",\"b\",\"c\"]");
+        qp.graphUpdateParents(g);
+        test.assert(util.emptyObject(g.a.parents), "a has no parents");
+        test.assert(g.c.parents.a, "c has parent a");
+        test.done();
     }; //}}}
     // }}}
     // HXML {{{
@@ -597,15 +827,15 @@ if (typeof exports === "undefined") {
         test.done();
     } //}}}
     // }}}
-    // Testrunner {{{1
-    exports.test = function(test) {
+    // Testrunner {{{
+    qp.test = function(test) {
         if (qp.nodejs) {
             var jsontest = test.create("load/save-JSON");
-            var result = exports.loadJSONSync("/does/not/exists", 1);
+            var result = qp.loadJSONSync("/does/not/exists", 1);
             jsontest.assertEqual(result, 1);
-            exports.saveJSON("/tmp/exports-save-json-testb", 2);
-            exports.saveJSON("/tmp/exports-save-json-test", 2, function() {
-                result = exports.loadJSONSync("/tmp/exports-save-json-test", 1);
+            qp.saveJSON("/tmp/exports-save-json-testb", 2);
+            qp.saveJSON("/tmp/exports-save-json-test", 2, function() {
+                result = qp.loadJSONSync("/tmp/exports-save-json-test", 1);
                 jsontest.assertEqual(result, 2);
                 jsontest.done();
             });
@@ -615,15 +845,15 @@ if (typeof exports === "undefined") {
             a: 1,
             b: 2
         };
-        exports.objForEach(obj, function(key, val) {
+        qp.objForEach(obj, function(key, val) {
             test.assert(key && obj[key] === val, "objforeach");
             ++count;
         });
         test.assertEqual(count, 2, "objforeach count");
-        test.assert(exports.strStartsWith("foobarbaz", "foobar"), "strstartswith1");
-        test.assert(!exports.strStartsWith("qoobarbaz", "foobar"), "strstartswith2");
-        test.assert(exports.strStartsWith("foobarbaz", ""), "strstartswith3");
-        test.assert(!exports.strStartsWith("foo", "foobar"), "strstartswith4");
+        test.assert(qp.strStartsWith("foobarbaz", "foobar"), "strstartswith1");
+        test.assert(!qp.strStartsWith("qoobarbaz", "foobar"), "strstartswith2");
+        test.assert(qp.strStartsWith("foobarbaz", ""), "strstartswith3");
+        test.assert(!qp.strStartsWith("foo", "foobar"), "strstartswith4");
         test.done();
     };
     // }}}
@@ -639,7 +869,7 @@ if (typeof exports === "undefined") {
     }
 
     // }}}
-    // merge this code into above {{{
+    // css/dom-processing-monad{{{
     // DomProcess {{{
     function DomProcess() { //{{{
         this.apply = function(dom) {
@@ -700,6 +930,7 @@ if (typeof exports === "undefined") {
             domRecursiveApply(children[i], table);
         }
     } //}}}
+    //}}}
     // file end {{{
 })();
 // }}}
