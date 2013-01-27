@@ -15,46 +15,46 @@ if (typeof exports === "undefined") {
     qp.trycatch = function(fn1, fn2) { //{{{
         try {
             return fn1();
-        } catch(e) {
+        } catch (e) {
             return fn2(e);
         }
     }; //}}}
-qp.extend = function(a, b) { //{{{
-    Object.keys(b).forEach(function(key) {
-        a[key] = b[key];
-    });
-    return a;
-}; //}}}
-exports.listpp = function(list, indent) { //{{{
-    indent = indent || "  ";
-    if(typeof list === "string") {
-        return list;
-    };
-    var result = list.map(function(elem) {
-        return exports.listpp(elem, indent + "  ");
-    });
-    var len = 0;
-    result.forEach(function(elem) {
-        len += elem.length + 1;
-    });
-    if(len < 72) {
-        return "[" + result.join(" ") + "]";
-    } else  {
-        return "[" + result.join("\n" + indent) + "]";
-    };
-}; //}}}
-exports.list2obj = function(arr) { // {{{
-    var result = {};
-    arr.forEach(function(elem) {
-        result[elem] = true;
-    });
-    return result;
-}; //}}}
+    qp.extend = function(a, b) { //{{{
+        Object.keys(b).forEach(function(key) {
+            a[key] = b[key];
+        });
+        return a;
+    }; //}}}
+    exports.listpp = function(list, indent) { //{{{
+        indent = indent || "  ";
+        if (typeof list === "string") {
+            return list;
+        };
+        var result = list.map(function(elem) {
+            return exports.listpp(elem, indent + "  ");
+        });
+        var len = 0;
+        result.forEach(function(elem) {
+            len += elem.length + 1;
+        });
+        if (len < 72) {
+            return "[" + result.join(" ") + "]";
+        } else {
+            return "[" + result.join("\n" + indent) + "]";
+        };
+    }; //}}}
+    exports.list2obj = function(arr) { // {{{
+        var result = {};
+        arr.forEach(function(elem) {
+            result[elem] = true;
+        });
+        return result;
+    }; //}}}
     qp.uniqId = function(prefix) { //{{{
         prefix = prefix || "_";
         ++uniqIdCounter;
         return prefix + String(uniqIdCounter);
-    } 
+    }
     var uniqIdCounter = 0; // }}}
     qp.nextTick = function(fn) { //{{{
         if (qp.nodejs) {
@@ -79,204 +79,210 @@ exports.list2obj = function(arr) { // {{{
             return String.fromCharCode(parseInt(code.slice(1), 16));
         });
     } //}}}
-qp.throttledFn = function(fn, delay) { //{{{
-    delay = delay || 5000;
-    var lastRun = 0;
-    var scheduled = false;
-    var callbacks = [];
-    return function(callback) {
-        if(callback) {
-            callbacks.push(callback);
-        };
-        if(scheduled) {
-            return ;
-        };
-        var self = this;
-        var run = function() {
-            scheduled = false;
-            callbacks = [];
-            lastRun = Date.now();
-            fn.call(self, function() {
-                callbacks.forEach(function(f) {
-                    f();
+    qp.throttledFn = function(fn, delay) { //{{{
+        delay = delay || 5000;
+        var lastRun = 0;
+        var scheduled = false;
+        var callbacks = [];
+        return function(callback) {
+            if (callback) {
+                callbacks.push(callback);
+            };
+            if (scheduled) {
+                return;
+            };
+            var self = this;
+            var run = function() {
+                scheduled = false;
+                callbacks = [];
+                lastRun = Date.now();
+                fn.call(self, function() {
+                    callbacks.forEach(function(f) {
+                        f();
+                    });
                 });
+            };
+            scheduled = true;
+            setTimeout(run, Math.max(0, delay - (Date.now() - lastRun)));
+        };
+    }; //}}}
+    exports.asyncArrayForEach = function(arr, fn, done) { //{{{
+        var count = arr.length;
+        var cb = function() {
+            if (count === 0) {
+                done();
+            };
+            --count;
+        };
+        cb();
+        arr.forEach(function(key) {
+            fn(key, cb);
+        });
+    }; //}}}
+    exports.name2url = function(name) { //{{{
+        return name.replace(RegExp("[^a-zA-Z0-9_-]", "g"), function(c) {
+            var subs = {
+                "Æ": "AE",
+                "Ø": "O",
+                "Å": "AA",
+                "æ": "ae",
+                "ø": "o",
+                "å": "aa",
+                "é": "e",
+                "?": "",
+                ":": "",
+                " ": "_",
+            };
+            if (typeof subs[c] === "string") {
+                return "_";
+            } else {
+                return subs[c];
+            };
+        });
+    }; //}}}
+    // local storage {{{
+    if (qp.nodejs) {
+        !(function() {
+            var db = qp.trycatch(function() {
+                return JSON.parse(require("fs").readFileSync(process.env.HOME + "/data/local.sqlite3"));
+            }, function() {
+                return {};
+            });
+            var syncLocalStorage = qp.throttledFn(function() {
+                require("fs").writeFile(process.env.HOME + "/data/local.sqlite3", JSON.stringify(db, null, "  "));
+            });
+            var lastSync = 0;
+            exports.local = {
+                set: function(key, val) {
+                    db[key] = val;
+                    syncLocalStorage();
+                },
+                get: function(key) {
+                    return db[key];
+                }
+            };
+        })();
+    } else if (typeof localStorage !== "undefined") {
+        exports.local = {
+            set: function(key, val) {
+                localStorage.setItem(key, val);
+            },
+            get: function(key) {
+                localStorage.getItem(key);
+            }
+        };
+    }; //}}}
+    // runonce {{{
+    qp.runonce = function(fn) {
+        var execute = true;
+        return function() {
+            if (execute) {
+                fn.apply(this, Array.prototype.slice.call(arguments, 0));
+                execute = false;
+            };
+        };
+    }; //}}}
+    // flatteArray {{{
+    qp.flattenArray = function(arr) {
+        var acc = [];
+        var flatten = function(arr) {
+            if (Array.isArray(arr)) {
+                arr.forEach(flatten);
+            } else {
+                acc.push(arr);
+            };
+        };
+        flatten(arr);
+        return acc;
+    }; //}}}
+    // valmap {{{
+    qp.valmap = function(obj, fn) {
+        var result = {};
+        Object.keys(obj).forEach(function(key) {
+            result[key] = fn(obj[key]);
+        });
+        return result;
+    }; //}}}
+    // emptyObject {{{
+    exports.emptyObject = function(obj) {
+        return Object.keys(obj).length === 0;
+    }; //}}}
+    // strStartsWith {{{
+    exports.strStartsWith = function(str1, str2) {
+        return str1.slice(0, str2.length) === str2;
+    }; //}}}
+    // objForEach {{{
+    exports.objForEach = function(obj, fn) {
+        Object.keys(obj).forEach(function(key) {
+            fn(key, obj[key]);
+        });
+    }; //}}}
+    // mkdir,cp,mtime {{{
+    if (qp.nodejs) {
+        var fs = require("fs");
+        var dirs = {};
+        exports.mkdir = function(path) {
+            if (!dirs[path] && !fs.existsSync(path)) {
+                path = path.split("/");
+                while (!path[path.length - 1]) {
+                    path.pop();
+                };
+                exports.mkdir(path.slice(0, -1).join("/"));
+                fs.mkdirSync(path.join("/"));
+                dirs[path] = true;
+            };
+        };
+        exports.cp = function(src, dst, callback) {
+            require("util").pump(fs.createReadStream(src), fs.createWriteStream(dst), callback);
+        };
+        exports.mtime = function(filename) {
+            return qp.trycatch(function() {
+                return fs.statSync(filename).mtime.getTime();
+            }, function() {
+                return 0;
             });
         };
-        scheduled = true;
-        setTimeout(run, Math.max(0, delay - (Date.now() - lastRun)));
-    };
-}; //}}}
-exports.asyncArrayForEach = function(arr, fn, done) { //{{{
-    var count = arr.length;
-    var cb = function() {
-        if(count === 0) {
-            done();
+    }; //}}}
+    exports.shuffleArray = function(arr) { //{{{
+        var i = arr.length;
+        while (i) {
+            --i;
+            var r = Math.random() * arr.length | 0;
+            var t = arr[i];
+            arr[i] = arr[r];
+            arr[r] = t;
         };
-        --count;
-    };
-    cb();
-    arr.forEach(function(key) {
-        fn(key, cb);
-    });
-};//}}}
-exports.name2url = function(name) { //{{{
-    return name.replace(RegExp("[^a-zA-Z0-9_-]", "g"), function(c) {
-        var subs = {
-            "Æ" : "AE",
-            "Ø" : "O",
-            "Å" : "AA",
-            "æ" : "ae",
-            "ø" : "o",
-            "å" : "aa",
-            "é" : "e",
-            "?" : "",
-            ":" : "",
-            " " : "_",
+        return arr;
+    }; //}}}
+    exports.arrayPickRandom = function(arr) { //{{{
+        return arr[Math.random() * arr.length | 0];
+    }; //}}}
+    // save/load json {{{
+    if (qp.nodejs) {
+        exports.saveJSON = function(filename, content, callback) {
+            require("fs").writeFile(filename, JSON.stringify(content), callback);
         };
-        if(typeof subs[c] === "string") {
-            return "_";
-        } else  {
-            return subs[c];
-        };
-    });
-}; //}}}
-// local storage {{{
-if(qp.nodejs) {
-    !(function() {
-        var db = qp.trycatch(function() {
-            return JSON.parse(require("fs").readFileSync(process.env.HOME + "/data/local.sqlite3"));
-        }, function() {
-            return {};
-        });
-        var syncLocalStorage = qp.throttledFn(function() {
-            require("fs").writeFile(process.env.HOME + "/data/local.sqlite3", JSON.stringify(db, null, "  "));
-        });
-        var lastSync = 0;
-        exports.local = {set : function(key, val) {
-            db[key] = val;
-            syncLocalStorage();
-        }, get : function(key) {
-            return db[key];
-        }};
-    })();
-} else if(typeof localStorage !== "undefined") {
-    exports.local = {set : function(key, val) {
-        localStorage.setItem(key, val);
-    }, get : function(key) {
-        localStorage.getItem(key);
-    }};
-}; //}}}
-// runonce {{{
-qp.runonce = function(fn) {
-    var execute = true;
-    return function() {
-        if(execute) {
-            fn.apply(this, Array.prototype.slice.call(arguments, 0));
-            execute = false;
-        };
-    };
-}; //}}}
-// flatteArray {{{
-qp.flattenArray = function(arr) {
-    var acc = [];
-    var flatten = function(arr) {
-        if(Array.isArray(arr)) {
-            arr.forEach(flatten);
-        } else  {
-            acc.push(arr);
-        };
-    };
-    flatten(arr);
-    return acc;
-}; //}}}
-// valmap {{{
-qp.valmap = function(obj, fn) {
-    var result = {};
-    Object.keys(obj).forEach(function(key) {
-        result[key] = fn(obj[key]);
-    });
-    return result;
-}; //}}}
-// emptyObject {{{
-exports.emptyObject = function(obj) {
-    return Object.keys(obj).length === 0;
-}; //}}}
-// strStartsWith {{{
-exports.strStartsWith = function(str1, str2) {
-    return str1.slice(0, str2.length) === str2;
-}; //}}}
-// objForEach {{{
-exports.objForEach = function(obj, fn) {
-    Object.keys(obj).forEach(function(key) {
-        fn(key, obj[key]);
-    });
-}; //}}}
-// mkdir,cp,mtime {{{
-if(qp.nodejs) {
-    var fs = require("fs");
-    var dirs = {};
-    exports.mkdir = function(path) {
-        if(!dirs[path] && !fs.existsSync(path)) {
-            path = path.split("/");
-            while(!path[path.length - 1]) {
-                path.pop();
+        exports.loadJSONSync = function(filename, defaultVal) {
+            if (!defaultVal) {
+                defaultVal = function(e) {
+                    return {
+                        err: e
+                    };
+                };
             };
-            exports.mkdir(path.slice(0, - 1).join("/"));
-            fs.mkdirSync(path.join("/"));
-            dirs[path] = true;
+            var fn = typeof defaultVal === "function" ? defaultVal : function(err) {
+                    return defaultVal;
+                };
+            return qp.trycatch(function() {
+                return JSON.parse(require("fs").readFileSync(filename, "utf8"));
+            }, fn);
         };
-    };
-    exports.cp = function(src, dst, callback) {
-        require("util").pump(fs.createReadStream(src), fs.createWriteStream(dst), callback);
-    };
-    exports.mtime = function(filename) {
-        return qp.trycatch(function() {
-            return fs.statSync(filename).mtime.getTime();
-        }, function() {
-            return 0;
-        });
-    };
-}; //}}}
-exports.shuffleArray = function(arr) { //{{{
-    var i = arr.length;
-    while(i) {
-        --i;
-        var r = Math.random() * arr.length | 0;
-        var t = arr[i];
-        arr[i] = arr[r];
-        arr[r] = t;
-    };
-    return arr;
-}; //}}}
-exports.arrayPickRandom = function(arr) { //{{{
-    return arr[Math.random() * arr.length | 0];
-}; //}}}
-// save/load json {{{
-if(qp.nodejs) {
-    exports.saveJSON = function(filename, content, callback) {
-        require("fs").writeFile(filename, JSON.stringify(content), callback);
-    };
-    exports.loadJSONSync = function(filename, defaultVal) {
-        if(!defaultVal) {
-            defaultVal = function(e) {
-                return {err : e};
-            };
-        };
-        var fn = typeof defaultVal === "function" ? defaultVal : function(err) {
-            return defaultVal;
-        };
-        return qp.trycatch(function() {
-            return JSON.parse(require("fs").readFileSync(filename, "utf8"));
-        }, fn);
-    };
-}; //}}}
+    }; //}}}
     // }}}
     // HXML {{{
     qp.HXML = function(xml) {
-        if(typeof xml === "string") {
-        } 
-        if(Array.isArray(xml)) {
-        }
+        if (typeof xml === "string") {}
+        if (Array.isArray(xml)) {}
     }
     var xmlEntities = { //{{{
         amp: "&",
@@ -591,32 +597,35 @@ if(qp.nodejs) {
         test.done();
     } //}}}
     // }}}
-// Testrunner {{{1
-exports.test = function(test) {
-    if(qp.nodejs) {
-        var jsontest = test.create("load/save-JSON");
-        var result = exports.loadJSONSync("/does/not/exists", 1);
-        jsontest.assertEqual(result, 1);
-        exports.saveJSON("/tmp/exports-save-json-testb", 2);
-        exports.saveJSON("/tmp/exports-save-json-test", 2, function() {
-            result = exports.loadJSONSync("/tmp/exports-save-json-test", 1);
-            jsontest.assertEqual(result, 2);
-            jsontest.done();
+    // Testrunner {{{1
+    exports.test = function(test) {
+        if (qp.nodejs) {
+            var jsontest = test.create("load/save-JSON");
+            var result = exports.loadJSONSync("/does/not/exists", 1);
+            jsontest.assertEqual(result, 1);
+            exports.saveJSON("/tmp/exports-save-json-testb", 2);
+            exports.saveJSON("/tmp/exports-save-json-test", 2, function() {
+                result = exports.loadJSONSync("/tmp/exports-save-json-test", 1);
+                jsontest.assertEqual(result, 2);
+                jsontest.done();
+            });
+        };
+        var count = 0;
+        var obj = {
+            a: 1,
+            b: 2
+        };
+        exports.objForEach(obj, function(key, val) {
+            test.assert(key && obj[key] === val, "objforeach");
+            ++count;
         });
+        test.assertEqual(count, 2, "objforeach count");
+        test.assert(exports.strStartsWith("foobarbaz", "foobar"), "strstartswith1");
+        test.assert(!exports.strStartsWith("qoobarbaz", "foobar"), "strstartswith2");
+        test.assert(exports.strStartsWith("foobarbaz", ""), "strstartswith3");
+        test.assert(!exports.strStartsWith("foo", "foobar"), "strstartswith4");
+        test.done();
     };
-    var count = 0;
-    var obj = {a : 1, b : 2};
-    exports.objForEach(obj, function(key, val) {
-        test.assert(key && obj[key] === val, "objforeach");
-        ++count;
-    });
-    test.assertEqual(count, 2, "objforeach count");
-    test.assert(exports.strStartsWith("foobarbaz", "foobar"), "strstartswith1");
-    test.assert(!exports.strStartsWith("qoobarbaz", "foobar"), "strstartswith2");
-    test.assert(exports.strStartsWith("foobarbaz", ""), "strstartswith3");
-    test.assert(!exports.strStartsWith("foo", "foobar"), "strstartswith4");
-    test.done();
-};
     // }}}
     // route {{{
     if (qp.nodejs) {
