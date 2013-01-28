@@ -115,8 +115,7 @@
         var cb = function() {
             if (count === 0) {
                 done();
-            }
-            --count;
+            }--count;
         };
         cb();
         arr.forEach(function(key) {
@@ -473,20 +472,21 @@
             prevLength = result.length;
             qp.objForEach(graph, visitEachNode);
         }
+
         function visitEachNode(nodeId, node) {
-                if (!visited[nodeId]) {
-                    var ok = true;
-                    Object.keys(node.parents).forEach(function(parentId) {
-                        if (!visited[parentId]) {
-                            ok = false;
-                        }
-                    });
-                    if (ok) {
-                        result.push(nodeId);
-                        visited[nodeId] = true;
+            if (!visited[nodeId]) {
+                var ok = true;
+                Object.keys(node.parents).forEach(function(parentId) {
+                    if (!visited[parentId]) {
+                        ok = false;
                     }
+                });
+                if (ok) {
+                    result.push(nodeId);
+                    visited[nodeId] = true;
                 }
             }
+        }
         return result;
     }; //}}}
     qp.ensureNode = function(graph, name) { //{{{
@@ -861,13 +861,12 @@
     };
     // }}}
     // build {{{
-    qp.build = function() {
-    };
+    qp.build = function() {};
     // }}}
     // route {{{
-    var routes = { };
+    var routes = {};
     qp.route = function(route, fn) { //{{{
-        if(route === undefined) {
+        if (route === undefined) {
             route = "DEFAULT ROUTE";
         } else {
             route = route.toLowerCase();
@@ -875,13 +874,16 @@
         route = route.split("/")[0];
         routes[route] = fn;
     }; //}}}
-    qp.route(undefined, function() { throw "no default route"; });
+    qp.route(undefined, function() {
+        throw "no default route";
+    });
+
     function main() { //{{{
         var path;
-        if(qp.nodejs) {
+        if (qp.nodejs) {
             path = process.argv[2] || "";
-        } else if(typeof location === "object")  {
-            if(location.hash) {
+        } else if (typeof location === "object") {
+            if (location.hash) {
                 path = location.hash.slice(1);
             } else {
                 path = location.pathname.slice(1);
@@ -890,13 +892,13 @@
         qp.go(path);
     }
     qp.nextTick(main); //}}}
-    qp.go = function(path) {//{{{
+    qp.go = function(path) { //{{{
         var fn = routes[path.split("/")[0].toLowerCase()];
-        if(!fn) {
+        if (!fn) {
             fn = routes["DEFAULT ROUTE"];
         }
         fn();
-    };//}}}
+    }; //}}}
     //}}}
     // css/dom-processing-monad{{{
     // DomProcess {{{
@@ -962,9 +964,8 @@
     } //}}}
     //}}}
     // dev-server {{{
-    if(qp.nodejs) {
-        qp.route("dev-server", function() {
-        });
+    if (qp.nodejs) {
+        qp.route("dev-server", function() {});
     } //}}}
     // file end {{{
 })();
