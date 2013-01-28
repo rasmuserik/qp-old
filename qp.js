@@ -965,7 +965,17 @@
     //}}}
     // dev-server {{{
     if (qp.nodejs) {
-        qp.route("dev-server", function() {});
+        qp.route("dev-server", function() {
+            // route:
+            // socket.io
+            // - app.js - combined __filename and process.mainModule.filename
+            // /static in __dirname
+            // /static in process.mainModule.filename.split("/").slice(0, -1).join("/");
+            console.log(__dirname);
+            console.log(__filename);
+            console.log(process.mainModule.filename);
+
+        });
     } //}}}
     // file end {{{
 })();
