@@ -1,15 +1,19 @@
-// setup {{{
-if (typeof exports === "undefined") {
-    qp = {};
-} else {
-    qp = exports;
-}
+/*global qp process setTimeout location require console window localStorage document module*/
 (function() {
     "use strict";
+    var qp = {};
+    // setup {{{
+    if (typeof exports === "undefined") {
+        window.qp = qp;
+    } else {
+        module.exports = qp;
+    }
     //}}}
     // environment {{{
     qp.nodejs = typeof process !== "undefined" && process.versions && process.versions.node;
     qp.html5 = !qp.nodejs;
+    qp.host = "localhost";
+    qp.port = 1234;
     // }}}
     // util {{{
     qp.trycatch = function(fn1, fn2) { //{{{
@@ -29,7 +33,7 @@ if (typeof exports === "undefined") {
         indent = indent || "  ";
         if (typeof list === "string") {
             return list;
-        };
+        }
         var result = list.map(function(elem) {
             return qp.listpp(elem, indent + "  ");
         });
@@ -41,7 +45,7 @@ if (typeof exports === "undefined") {
             return "[" + result.join(" ") + "]";
         } else {
             return "[" + result.join("\n" + indent) + "]";
-        };
+        }
     }; //}}}
     qp.list2obj = function(arr) { // {{{
         var result = {};
@@ -54,7 +58,7 @@ if (typeof exports === "undefined") {
         prefix = prefix || "_";
         ++uniqIdCounter;
         return prefix + String(uniqIdCounter);
-    }
+    };
     var uniqIdCounter = 0; // }}}
     qp.nextTick = function(fn) { //{{{
         if (qp.nodejs) {
@@ -62,7 +66,7 @@ if (typeof exports === "undefined") {
         } else {
             setTimeout(fn, 0);
         }
-    } //}}}
+    }; //}}}
     function arrayToSetObject(arr) { //{{{
         var i;
         var result = {};
@@ -87,10 +91,10 @@ if (typeof exports === "undefined") {
         return function(callback) {
             if (callback) {
                 callbacks.push(callback);
-            };
+            }
             if (scheduled) {
                 return;
-            };
+            }
             var self = this;
             var run = function() {
                 scheduled = false;
@@ -111,7 +115,7 @@ if (typeof exports === "undefined") {
         var cb = function() {
             if (count === 0) {
                 done();
-            };
+            }
             --count;
         };
         cb();
@@ -120,7 +124,7 @@ if (typeof exports === "undefined") {
         });
     }; //}}}
     qp.name2url = function(name) { //{{{
-        return name.replace(RegExp("[^a-zA-Z0-9_-]", "g"), function(c) {
+        return name.replace(new RegExp("[^a-zA-Z0-9_-]", "g"), function(c) {
             var subs = {
                 "Æ": "AE",
                 "Ø": "O",
@@ -131,18 +135,18 @@ if (typeof exports === "undefined") {
                 "é": "e",
                 "?": "",
                 ":": "",
-                " ": "_",
+                " ": "_"
             };
             if (typeof subs[c] === "string") {
                 return "_";
             } else {
                 return subs[c];
-            };
+            }
         });
     }; //}}}
     // local storage {{{
     if (qp.nodejs) {
-        !(function() {
+        (function() {
             var db = qp.trycatch(function() {
                 return JSON.parse(require("fs").readFileSync(process.env.HOME + "/data/local.sqlite3"));
             }, function() {
@@ -171,7 +175,7 @@ if (typeof exports === "undefined") {
                 localStorage.getItem(key);
             }
         };
-    }; //}}}
+    } //}}}
     // runonce {{{
     qp.runonce = function(fn) {
         var execute = true;
@@ -179,7 +183,7 @@ if (typeof exports === "undefined") {
             if (execute) {
                 fn.apply(this, Array.prototype.slice.call(arguments, 0));
                 execute = false;
-            };
+            }
         };
     }; //}}}
     // flatteArray {{{
@@ -190,7 +194,7 @@ if (typeof exports === "undefined") {
                 arr.forEach(flatten);
             } else {
                 acc.push(arr);
-            };
+            }
         };
         flatten(arr);
         return acc;
@@ -226,11 +230,11 @@ if (typeof exports === "undefined") {
                 path = path.split("/");
                 while (!path[path.length - 1]) {
                     path.pop();
-                };
+                }
                 qp.mkdir(path.slice(0, -1).join("/"));
                 fs.mkdirSync(path.join("/"));
                 dirs[path] = true;
-            };
+            }
         };
         qp.cp = function(src, dst, callback) {
             require("util").pump(fs.createReadStream(src), fs.createWriteStream(dst), callback);
@@ -242,7 +246,7 @@ if (typeof exports === "undefined") {
                 return 0;
             });
         };
-    }; //}}}
+    } //}}}
     qp.shuffleArray = function(arr) { //{{{
         var i = arr.length;
         while (i) {
@@ -251,7 +255,7 @@ if (typeof exports === "undefined") {
             var t = arr[i];
             arr[i] = arr[r];
             arr[r] = t;
-        };
+        }
         return arr;
     }; //}}}
     qp.arrayPickRandom = function(arr) { //{{{
@@ -269,7 +273,7 @@ if (typeof exports === "undefined") {
                         err: e
                     };
                 };
-            };
+            }
             var fn = typeof defaultVal === "function" ? defaultVal : function(err) {
                     return defaultVal;
                 };
@@ -277,7 +281,7 @@ if (typeof exports === "undefined") {
                 return JSON.parse(require("fs").readFileSync(filename, "utf8"));
             }, fn);
         };
-    }; //}}}
+    } //}}}
     // }}}
     // qp.V2d {{{
     qp.V2d = function(x, y) { //{{{
@@ -326,7 +330,7 @@ if (typeof exports === "undefined") {
             basegraph[i] = [];
             basegraph[Math.random() * i | 0].push(i);
             ++i;
-        };
+        }
         //basegraph[0].push('0,0');
         Object.keys(basegraph).forEach(function(id) {
             basegraph[id] = {
@@ -334,7 +338,7 @@ if (typeof exports === "undefined") {
                 force: new V2d(0, 0),
                 velocity: new V2d(Math.random() - 0.5, Math.random() - 0.5),
                 pos: new V2d(Math.random(), Math.random()),
-                children: basegraph[id],
+                children: basegraph[id]
             };
         });
         var graph = [];
@@ -344,7 +348,7 @@ if (typeof exports === "undefined") {
             });
             graph.push(basegraph[id]);
         });
-        var spring = .1;
+        var spring = 0.1;
         var repuls = 1;
         var dampening = 0.90;
         var maxspeed = 0.01;
@@ -371,8 +375,8 @@ if (typeof exports === "undefined") {
                         if (d < Math.PI / 2) {
                             //a.force = a.force.add( v.scale(repuls * Math.cos(d)));
                             a.force = a.force.add(v.scale(repuls * (Math.PI / 2 - d)));
-                        };
-                    };
+                        }
+                    }
                 });
             });
             // ### Calculate velocity
@@ -381,7 +385,7 @@ if (typeof exports === "undefined") {
                 elem.velocity = elem.velocity.scale(dampening);
                 if (elem.velocity.length() > maxspeed) {
                     elem.velocity.scale(maxspeed - elem.velocity.length());
-                };
+                }
             });
             // ### Calculate position
             graph.forEach(function(elem) {
@@ -392,7 +396,7 @@ if (typeof exports === "undefined") {
             drawGraph();
             if (running) {
                 setTimeout(run, 0);
-            };
+            }
         };
         var runno = 0;
         var drawGraph = function() {
@@ -451,11 +455,11 @@ if (typeof exports === "undefined") {
         run();
     }; //}}}
     qp.graphUpdateParents = function(graph) { //{{{
-        util.objForEach(graph, function(_, node) {
+        qp.objForEach(graph, function(_, node) {
             node.parents = {};
         });
-        util.objForEach(graph, function(nodeId, node) {
-            util.objForEach(node.children, function(key, _) {
+        qp.objForEach(graph, function(nodeId, node) {
+            qp.objForEach(node.children, function(key, _) {
                 graph[key].parents[nodeId] = true;
             });
         });
@@ -467,21 +471,22 @@ if (typeof exports === "undefined") {
         var prevLength = -1;
         while (result.length !== prevLength) {
             prevLength = result.length;
-            util.objForEach(graph, function(nodeId, node) {
+            qp.objForEach(graph, visitEachNode);
+        }
+        function visitEachNode(nodeId, node) {
                 if (!visited[nodeId]) {
                     var ok = true;
                     Object.keys(node.parents).forEach(function(parentId) {
                         if (!visited[parentId]) {
                             ok = false;
-                        };
+                        }
                     });
                     if (ok) {
                         result.push(nodeId);
                         visited[nodeId] = true;
-                    };
-                };
-            });
-        };
+                    }
+                }
+            }
         return result;
     }; //}}}
     qp.ensureNode = function(graph, name) { //{{{
@@ -490,7 +495,7 @@ if (typeof exports === "undefined") {
                 id: name,
                 children: {}
             };
-        };
+        }
     }; //}}}
     qp.addEdge = function(graph, from, to) { //{{{
         qp.ensureNode(graph, from);
@@ -504,7 +509,7 @@ if (typeof exports === "undefined") {
         qp.addEdge(g, "a", "c");
         test.assertEqual(JSON.stringify(qp.traverseDAG(g)), "[\"a\",\"b\",\"c\"]");
         qp.graphUpdateParents(g);
-        test.assert(util.emptyObject(g.a.parents), "a has no parents");
+        test.assert(qp.emptyObject(g.a.parents), "a has no parents");
         test.assert(g.c.parents.a, "c has parent a");
         test.done();
     }; //}}}
@@ -513,11 +518,13 @@ if (typeof exports === "undefined") {
     qp.HXML = function(xml) {
         if (typeof xml === "string") {}
         if (Array.isArray(xml)) {}
-    }
+    };
     var xmlEntities = { //{{{
+        lt: "<",
+        gt: ">",
         amp: "&",
         quot: "\"",
-        nbsp: "\xa0",
+        nbsp: "\xa0"
     }; //}}}
     function jmlFilterWs(jml) { //{{{
         if (typeof jml === "string") {
@@ -533,11 +540,11 @@ if (typeof exports === "undefined") {
     function strToJsonml(str) { //{{{
         var errors = [];
 
-        function JsonML_Error(str) {
+        function jsonmlError(str) {
             errors.push(str);
         }
         if (typeof(str) !== "string") {
-            throw "parameter must be string"
+            throw "parameter must be string";
         }
 
         /** white space definition */
@@ -577,14 +584,14 @@ if (typeof exports === "undefined") {
                     } else {
                         c = xmlEntities[entity];
                         if (!c) {
-                            JsonML_Error("error: unrecognisable xml entity: " + entity);
+                            jsonmlError("error: unrecognisable xml entity: " + entity);
                         }
                     }
                 }
                 result += c;
                 next_char();
             }
-            return result
+            return result;
         }
 
         // The actual parsing
@@ -630,7 +637,7 @@ if (typeof exports === "undefined") {
                                 next_char();
                             }
                         } else {
-                            JsonML_Error("something not attribute in tag");
+                            jsonmlError("something not attribute in tag");
                         }
                         while (c && is_a(whitespace)) {
                             next_char();
@@ -642,7 +649,7 @@ if (typeof exports === "undefined") {
                     if (is_a("/")) {
                         next_char();
                         if (!is_a(">")) {
-                            JsonML_Error('expected ">" after "/" within tag');
+                            jsonmlError('expected ">" after "/" within tag');
                         }
                         tag.push(newtag);
                     } else {
@@ -655,7 +662,7 @@ if (typeof exports === "undefined") {
                 } else {
                     next_char();
                     if (read_until(">") !== tag[0]) {
-                        JsonML_Error("end tag not matching: " + tag[0]);
+                        jsonmlError("end tag not matching: " + tag[0]);
                     }
                     next_char();
                     var parent_tag = stack.pop();
@@ -807,23 +814,19 @@ if (typeof exports === "undefined") {
         var Browser = require("zombie");
         var test = new TestSuite("BibData", process.exit);
 
-        testServer(test.suite("server"));
+        // testServer(test.suite("server"));
 
         // start the client-test via zombie
         var clientSuite = test.suite("client");
         var browser = new Browser();
-        browser.visit("http://" + host + ":" + port, {
+        browser.visit("http://" + qp.host + ":" + qp.port, {
             debug: true
-        })
-            .then(function() {
+        }).then(function() {
             browser.window.testClient(clientSuite);
         }).fail(function() {
             clientSuite.fail("could not start client-test");
             test.done();
         });
-
-        testZombie(test.suite("ui"));
-
         test.done();
     } //}}}
     // }}}
@@ -839,7 +842,7 @@ if (typeof exports === "undefined") {
                 jsontest.assertEqual(result, 2);
                 jsontest.done();
             });
-        };
+        }
         var count = 0;
         var obj = {
             a: 1,
@@ -857,18 +860,44 @@ if (typeof exports === "undefined") {
         test.done();
     };
     // }}}
-    // route {{{
-    if (qp.nodejs) {
-        qp.nextTick(function() {
-            nodeMain();
-        });
-    }
-
-    function nodeMain() {
-        var args = process.argv;
-    }
-
+    // build {{{
+    qp.build = function() {
+    };
     // }}}
+    // route {{{
+    var routes = { };
+    qp.route = function(route, fn) { //{{{
+        if(route === undefined) {
+            route = "DEFAULT ROUTE";
+        } else {
+            route = route.toLowerCase();
+        }
+        route = route.split("/")[0];
+        routes[route] = fn;
+    }; //}}}
+    qp.route(undefined, function() { throw "no default route"; });
+    function main() { //{{{
+        var path;
+        if(qp.nodejs) {
+            path = process.argv[2] || "";
+        } else if(typeof location === "object")  {
+            if(location.hash) {
+                path = location.hash.slice(1);
+            } else {
+                path = location.pathname.slice(1);
+            }
+        }
+        qp.go(path);
+    }
+    qp.nextTick(main); //}}}
+    qp.go = function(path) {//{{{
+        var fn = routes[path.split("/")[0].toLowerCase()];
+        if(!fn) {
+            fn = routes["DEFAULT ROUTE"];
+        }
+        fn();
+    };//}}}
+    //}}}
     // css/dom-processing-monad{{{
     // DomProcess {{{
     function DomProcess() { //{{{
@@ -912,9 +941,10 @@ if (typeof exports === "undefined") {
         return (new DomProcess()).css(obj);
     } //}}}
     function domRecursiveApply(domNode, table) { //{{{
+        var i;
         var classes = domNode.classList;
         if (classes) {
-            for (var i = 0; i < classes.length; ++i) {
+            for (i = 0; i < classes.length; ++i) {
                 var entry = table[classes[i]];
                 if (entry) {
                     entry.apply(domNode);
@@ -931,6 +961,11 @@ if (typeof exports === "undefined") {
         }
     } //}}}
     //}}}
+    // dev-server {{{
+    if(qp.nodejs) {
+        qp.route("dev-server", function() {
+        });
+    } //}}}
     // file end {{{
 })();
 // }}}
