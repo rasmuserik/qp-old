@@ -25,6 +25,7 @@ Becoming closure-advanced-optimizable
     - watcher/dev-server
     - build 
         - production node.js-server
+            - include serving bootstrap+font-awesome+socket.io+...
         - html5 app
         - phonegap github repos
         - npm module
@@ -35,6 +36,7 @@ Becoming closure-advanced-optimizable
         - travis-setup
         - testling-setup
         - codescore-setup
+        - test/code-coverage (burrito?)
 - Test
     - testrunner
 - Toolbox
