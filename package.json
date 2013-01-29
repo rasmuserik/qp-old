@@ -12,7 +12,9 @@
         "name": "Rasmus Erik",
         "web": "http://rasmuserik.com"
     }],
-    "dependencies": {},
+    "dependencies": {
+        "express": "3.x"
+    },
     "engines": {
         "node": "*"
     },

@@ -1,4 +1,4 @@
-/*global qp process setTimeout location require console window localStorage document module*/
+/*global qp process setTimeout location require console window localStorage document module __dirname __filename*/
 (function() {
     "use strict";
     var qp = {};
@@ -15,6 +15,11 @@
     qp.host = "localhost";
     qp.port = 1234;
     // }}}
+    //dependencies{{{
+    if (qp.nodejs) {
+        var express = require("express");
+    }
+    //}}}
     // util {{{
     qp.trycatch = function(fn1, fn2) { //{{{
         try {
@@ -123,7 +128,7 @@
         });
     }; //}}}
     qp.name2url = function(name) { //{{{
-        return name.replace(new RegExp("[^a-zA-Z0-9_-]", "g"), function(c) {
+        return (String(name)).replace(new RegExp("[^a-zA-Z0-9_-]", "g"), function(c) {
             var subs = {
                 "Æ": "AE",
                 "Ø": "O",
@@ -137,9 +142,9 @@
                 " ": "_"
             };
             if (typeof subs[c] === "string") {
-                return "_";
-            } else {
                 return subs[c];
+            } else {
+                return "_";
             }
         });
     }; //}}}
@@ -863,42 +868,73 @@
     // build {{{
     qp.build = function() {};
     // }}}
-    // route {{{
-    var routes = {};
-    qp.route = function(route, fn) { //{{{
-        if (route === undefined) {
-            route = "DEFAULT ROUTE";
-        } else {
-            route = route.toLowerCase();
+    // qp.Client {{{
+    qp.Client = function(opt) {
+        for (var key in opt) {
+            this[key] = opt[key];
         }
-        route = route.split("/")[0];
-        routes[route] = fn;
-    }; //}}}
-    qp.route(undefined, function() {
-        throw "no default route";
-    });
+    };
+    qp.Client.prototype.text = function(str) {
+        var prev = this.resultText || "";
+        this.resultText = prev + str;
+        return this;
+    };
+    qp.Client.prototype.end = function() {
+        console.log(this.resultText);
+    };
+    // }}}
+    // app router {{{
+    var apps = {};
+    qp.register = function(name, app) {
+        app.name = name;
+        apps[name] = app;
+    };
 
     function main() { //{{{
         var path;
+        var app;
         if (qp.nodejs) {
-            path = process.argv[2] || "";
+            app = process.argv[2];
+            path = process.argv.slice(3) || [];
         } else if (typeof location === "object") {
+            app = window.qpApp || location.host.split(".")[0];
             if (location.hash) {
                 path = location.hash.slice(1);
             } else {
                 path = location.pathname.slice(1);
             }
+            // TODO: split path further
+            path = [path];
         }
-        qp.go(path);
+        qp.go(app, path);
     }
     qp.nextTick(main); //}}}
-    qp.go = function(path) { //{{{
-        var fn = routes[path.split("/")[0].toLowerCase()];
-        if (!fn) {
-            fn = routes["DEFAULT ROUTE"];
-        }
-        fn();
+    qp.go = function(appname, path) { //{{{
+        var app = apps[appname] || apps["default"];
+        var fn = app.routes[path[0]] || app.routes["default"];
+        fn(new qp.Client({
+            name: appname,
+            path: path
+        }));
     }; //}}}
+    qp.register("default", { //{{{
+        routes: {
+            "default": function(client) {
+                var message;
+                if (qp.nodejs) {
+                    message = "Usage: " + process.argv.slice(0, 2).join(" ") + " [app name] [app args]\n";
+                } else {
+                    message = "Error: app name not found.\n";
+                }
+                message += "Possible app names: ";
+                var appnames = Object.keys(apps);
+                appnames.sort();
+                message += appnames.join(", ");
+                client.text(message);
+                client.end();
+            }
+        }
+    }); //}}}
     //}}}
     // css/dom-processing-monad{{{
     // DomProcess {{{
@@ -965,6 +1001,26 @@
     //}}}
     // dev-server {{{
     if (qp.nodejs) {
+        qp.register(qp.name2url("dev-server"), {
+            routes: {
+                "default": startDevServer
+            }
+        });
+
+        function startDevServer(client) {
+            var appname = client.path[1];
+            if (!apps[appname]) {
+                client.text("Usage: " + process.argv.slice(0, 3).join(" ") + " [app name]\n");
+                client.text("Possible app names: ");
+                var appnames = Object.keys(apps);
+                appnames.sort();
+                client.text(appnames.join(", "));
+                return client.end();
+            }
+            console.log(client.path);
+            return;
+        }
+        /*
         qp.route("dev-server", function() {
             // route:
             // socket.io
@@ -976,6 +1032,7 @@
             console.log(process.mainModule.filename);
 
         });
+        */
     } //}}}
     // file end {{{
 })();
