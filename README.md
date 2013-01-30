@@ -1,8 +1,33 @@
 # qp JavaScript library
 
+
 Lifting various reusable code out to a personal JS-library
 
 Becoming closure-advanced-optimizable
+
+Getting started:
+
+    $ mkdir MyApp && cd MyApp 
+    $ cat > package.json
+    { "name": "MyApp",
+      "version": "0.0.1",
+      "author": "me",
+      "dependencies": {"qp":"git://github.com/rasmuserik/qp.git#master"}
+    }
+    $ cat > app.js
+    if(typeof qp === "undefined") { qp = require("qp"); }
+    qp.register({fn: function(client) {
+        client.text("hello from app").end();
+    }});
+    $ npm install
+    [...]
+    $ node app.js
+    hello from app
+    $ node app.js dev-server
+    [...]
+    dev-server running on localhost:1234
+
+open `http://localhost:1234/` in browser to visit app
 
 # TODO / to-lift
 
