@@ -15,11 +15,6 @@
     qp.host = "localhost";
     qp.port = 1234;
     // }}}
-    //dependencies{{{
-    if (qp.nodejs) {
-        var express = require("express");
-    }
-    //}}}
     // util {{{
     qp.trycatch = function(fn1, fn2) { //{{{
         try {
@@ -28,11 +23,14 @@
             return fn2(e);
         }
     }; //}}}
-    qp.extend = function(a, b) { //{{{
-        Object.keys(b).forEach(function(key) {
-            a[key] = b[key];
-        });
-        return a;
+    qp.extend = function(target) { //{{{
+        for(var i = 1; i < arguments.length; ++i) {
+            var obj = arguments[i];
+            for(var key in obj) {
+                target[key] = obj[key];
+            }
+        }
+        return target;
     }; //}}}
     qp.listpp = function(list, indent) { //{{{
         indent = indent || "  ";
@@ -869,7 +867,10 @@
     qp.build = function() {};
     // }}}
     // qp.Client {{{
-    qp.Client = function(opt) {
+    qp.Client = function(platform, app, path, opt) {
+        this.platform = platform;
+        this.app = app;
+        this.path = path
         for (var key in opt) {
             this[key] = opt[key];
         }
@@ -880,61 +881,135 @@
         return this;
     };
     qp.Client.prototype.end = function() {
-        console.log(this.resultText);
+        if(this.platform === "command") {
+            console.log(this.resultText);
+        } else if(this.platform === "http") {
+            this.res.end(this.resultText);
+        } else {
+            throw "unimplemented platform: " + this.platform;
+        }
     };
     // }}}
     // app router {{{
-    var apps = {};
-    qp.register = function(name, app) {
-        app.name = name;
-        apps[name] = app;
+    // route object {{{
+    var apps = {
+        "undefined": {}
     };
-
-    function main() { //{{{
-        var path;
-        var app;
-        if (qp.nodejs) {
-            app = process.argv[2];
-            path = process.argv.slice(3) || [];
-        } else if (typeof location === "object") {
-            app = window.qpApp || location.host.split(".")[0];
-            if (location.hash) {
-                path = location.hash.slice(1);
-            } else {
-                path = location.pathname.slice(1);
+    if (qp.nodejs) {
+        apps.command = {};
+        apps.http = {};
+    }
+    if (qp.html5) {
+        apps.html5 = {};
+    }
+    //}}}
+    function registerRoute(platform, name, path, obj) { //{{{
+        var appPlatform = apps[platform];
+        if (appPlatform) {
+            var app = appPlatform[name];
+            if (!app) {
+                app = {};
+                appPlatform[name] = app;
             }
-            // TODO: split path further
-            path = [path];
+            app[path] = obj;
         }
-        qp.go(app, path);
+    } //}}}
+    qp.register = function(obj) { //{{{
+        if(typeof obj.fn !== "function") {
+            throw "qp.register parameter must have a 'fn'-property of type function";
+        }
+        var platforms = obj.platforms || [obj.platform];
+        var names = obj.names || [obj.name];
+        var paths = obj.paths || [obj.path];
+        var i, j, k;
+        for (i = 0; i < platforms.length; ++i) {
+            for (j = 0; j < names.length; ++j) {
+                for (k = 0; k < paths.length; ++k) {
+                    registerRoute(platforms[i], names[j], paths[k], obj);
+                }
+            }
+        }
+    }; //}}}
+    qp.resolveRoute = function(platform, name, path) { //{{{
+        function lookup(platform, name, path) {
+            return apps[platform] && apps[platform][name] && apps[platform][name][path];
+        }
+        return lookup(platform, name, path) 
+            || lookup(undefined, name, path)
+            || lookup(platform, name, undefined)
+            || lookup(undefined, name, undefined)
+            || lookup(platform, undefined, path)
+            || lookup(undefined, undefined, path)
+            || lookup(platform, undefined, undefined)
+            || lookup(undefined, undefined, undefined);
+    }; //}}}
+    qp.register({fn: function(client) { //{{{
+        var platform = client.platform;
+        client.text("Error: no " + platform + " route found.\n");
+        client.text("Available routes:");
+        for(var app in apps[platform]) {
+            for(var path in apps[platform][app]) {
+                client.text("\n   ");
+                if(app === "undefined") {
+                    client.text("*");
+                } else {
+                    client.text(app);
+                }
+                client.text(" ");
+                if(path === "undefined") {
+                    client.text("*");
+                } else {
+                    client.text(path);
+                }
+            }
+        }
+        client.end();
+    }}); //}}}
+    qp.scope = function(scopeObj) { //{{{
+        var scope = {
+            register: function(childObj) {
+                qp.register(qp.extend({}, scopeObj, childObj));
+                return scope;
+            }
+        };
+        return scope;
+    }; //}}}
+    var getPath, getAppName; //{{{
+    if (qp.nodejs) {
+        getAppName = function() {
+            return process.argv[2];
+        };
+        getPath = function() {
+            return process.argv[3]; 
+        };
+    } else if (qp.html5) {
+        getAppName = function() {
+            return window.qpApp || location.host.split(".")[0];
+        };
+        getPath = function() {
+            var path;
+            if (location.hash) {
+                path = location.hash;
+            } else {
+                path = location.pathname;
+            }
+            path = path.slice(1).split(".")[0];
+            return path;
+        };
+    } //}}}
+    function go(platform, name, path, opt) {//{{{
+        var obj = qp.resolveRoute(platform, name, path);
+        obj.fn(new qp.Client(platform, name, path, opt));
+    } //}}}
+    function main() { //{{{
+        if(qp.nodejs) {
+            var platform = "command";
+        } else if(qp.html5) {
+            var platform = "html5";
+        }
+        go(platform, getAppName(), getPath());
     }
     qp.nextTick(main); //}}}
-    qp.go = function(appname, path) { //{{{
-        var app = apps[appname] || apps["default"];
-        var fn = app.routes[path[0]] || app.routes["default"];
-        fn(new qp.Client({
-            name: appname,
-            path: path
-        }));
-    }; //}}}
-    qp.register("default", { //{{{
-        routes: {
-            "default": function(client) {
-                var message;
-                if (qp.nodejs) {
-                    message = "Usage: " + process.argv.slice(0, 2).join(" ") + " [app name] [app args]\n";
-                } else {
-                    message = "Error: app name not found.\n";
-                }
-                message += "Possible app names: ";
-                var appnames = Object.keys(apps);
-                appnames.sort();
-                message += appnames.join(", ");
-                client.text(message);
-                client.end();
-            }
-        }
-    }); //}}}
     //}}}
     // css/dom-processing-monad{{{
     // DomProcess {{{
@@ -1001,39 +1076,24 @@
     //}}}
     // dev-server {{{
     if (qp.nodejs) {
-        qp.register(qp.name2url("dev-server"), {
-            routes: {
-                "default": startDevServer
-            }
+        var startDevServer = function(client) {
+            var devServer = function(req, res) {
+                var name = client.path;
+                var path = req.url.slice(1).split(/[.?]/)[0];
+                go("http", name, path, {req: req, res: res})
+            };
+            var app = require("http").createServer(devServer);
+            var io = require("socket.io").listen(app);
+            app.listen(qp.port, qp.host, function() {
+                console.log("dev-server running on", qp.host + ":" + qp.port);
+            });
+        };
+        qp.register({
+            platform: "command",
+            name: "dev-server",
+            fn: startDevServer
         });
-
-        function startDevServer(client) {
-            var appname = client.path[1];
-            if (!apps[appname]) {
-                client.text("Usage: " + process.argv.slice(0, 3).join(" ") + " [app name]\n");
-                client.text("Possible app names: ");
-                var appnames = Object.keys(apps);
-                appnames.sort();
-                client.text(appnames.join(", "));
-                return client.end();
-            }
-            console.log(client.path);
-            return;
-        }
-        /*
-        qp.route("dev-server", function() {
-            // route:
-            // socket.io
-            // - app.js - combined __filename and process.mainModule.filename
-            // /static in __dirname
-            // /static in process.mainModule.filename.split("/").slice(0, -1).join("/");
-            console.log(__dirname);
-            console.log(__filename);
-            console.log(process.mainModule.filename);
-
-        });
-        */
     } //}}}
     // file end {{{
-})();
+    })();
 // }}}

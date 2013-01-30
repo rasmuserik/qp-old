@@ -3,6 +3,8 @@ if (typeof qp === "undefined") {
 }
 
 function defaultFn(client) {
+    client.text("Hello from app");
+    return client.end();
     client.title("Hello world");
     client.body([
         ["h1", "Hello world"],
@@ -11,10 +13,6 @@ function defaultFn(client) {
     client.end();
 }
 
-qp.register("demoapp", {
-    version: "0.0.1",
-    routes: {
-        "index": defaultFn,
-        "": defaultFn
-    }
-});
+qp.register({ path: "", fn: defaultFn});
+qp.register({ path: "index", fn: defaultFn});
+qp.scope({platform: "http"}).register({ path: "app", fn: defaultFn});
