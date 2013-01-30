@@ -870,7 +870,7 @@
     qp.Client = function(platform, app, path, opt) {
         this.platform = platform;
         this.app = app;
-        this.path = path
+        this.path = path;
         for (var key in opt) {
             this[key] = opt[key];
         }
@@ -997,10 +997,11 @@
         obj.fn(new qp.Client(platform, name, path, opt));
     } //}}}
     function main() { //{{{
+        var platform;
         if (qp.nodejs) {
-            var platform = "command";
+            platform = "command";
         } else if (qp.html5) {
-            var platform = "html5";
+            platform = "html5";
         }
         go(platform, getAppName(), getPath());
     }
@@ -1078,7 +1079,7 @@
                 go("http", name, path, {
                     req: req,
                     res: res
-                })
+                });
             };
             var app = require("http").createServer(devServer);
             var io = require("socket.io").listen(app);
