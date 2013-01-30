@@ -13,6 +13,17 @@ function defaultFn(client) {
     client.end();
 }
 
-qp.register({ path: "", fn: defaultFn});
-qp.register({ path: "index", fn: defaultFn});
-qp.scope({platform: "http"}).register({ path: "app", fn: defaultFn});
+qp.register({
+    path: "",
+    fn: defaultFn
+});
+qp.register({
+    path: "index",
+    fn: defaultFn
+});
+qp.scope({
+    platform: "http"
+}).register({
+    path: "app",
+    fn: defaultFn
+});

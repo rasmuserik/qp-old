@@ -24,9 +24,9 @@
         }
     }; //}}}
     qp.extend = function(target) { //{{{
-        for(var i = 1; i < arguments.length; ++i) {
+        for (var i = 1; i < arguments.length; ++i) {
             var obj = arguments[i];
-            for(var key in obj) {
+            for (var key in obj) {
                 target[key] = obj[key];
             }
         }
@@ -881,9 +881,9 @@
         return this;
     };
     qp.Client.prototype.end = function() {
-        if(this.platform === "command") {
+        if (this.platform === "command") {
             console.log(this.resultText);
-        } else if(this.platform === "http") {
+        } else if (this.platform === "http") {
             this.res.end(this.resultText);
         } else {
             throw "unimplemented platform: " + this.platform;
@@ -915,7 +915,7 @@
         }
     } //}}}
     qp.register = function(obj) { //{{{
-        if(typeof obj.fn !== "function") {
+        if (typeof obj.fn !== "function") {
             throw "qp.register parameter must have a 'fn'-property of type function";
         }
         var platforms = obj.platforms || [obj.platform];
@@ -934,37 +934,32 @@
         function lookup(platform, name, path) {
             return apps[platform] && apps[platform][name] && apps[platform][name][path];
         }
-        return lookup(platform, name, path) 
-            || lookup(undefined, name, path)
-            || lookup(platform, name, undefined)
-            || lookup(undefined, name, undefined)
-            || lookup(platform, undefined, path)
-            || lookup(undefined, undefined, path)
-            || lookup(platform, undefined, undefined)
-            || lookup(undefined, undefined, undefined);
+        return lookup(platform, name, path) || lookup(undefined, name, path) || lookup(platform, name, undefined) || lookup(undefined, name, undefined) || lookup(platform, undefined, path) || lookup(undefined, undefined, path) || lookup(platform, undefined, undefined) || lookup(undefined, undefined, undefined);
     }; //}}}
-    qp.register({fn: function(client) { //{{{
-        var platform = client.platform;
-        client.text("Error: no " + platform + " route found.\n");
-        client.text("Available routes:");
-        for(var app in apps[platform]) {
-            for(var path in apps[platform][app]) {
-                client.text("\n   ");
-                if(app === "undefined") {
-                    client.text("*");
-                } else {
-                    client.text(app);
-                }
-                client.text(" ");
-                if(path === "undefined") {
-                    client.text("*");
-                } else {
-                    client.text(path);
+    qp.register({
+        fn: function(client) { //{{{
+            var platform = client.platform;
+            client.text("Error: no " + platform + " route found.\n");
+            client.text("Available routes:");
+            for (var app in apps[platform]) {
+                for (var path in apps[platform][app]) {
+                    client.text("\n   ");
+                    if (app === "undefined") {
+                        client.text("*");
+                    } else {
+                        client.text(app);
+                    }
+                    client.text(" ");
+                    if (path === "undefined") {
+                        client.text("*");
+                    } else {
+                        client.text(path);
+                    }
                 }
             }
+            client.end();
         }
-        client.end();
-    }}); //}}}
+    }); //}}}
     qp.scope = function(scopeObj) { //{{{
         var scope = {
             register: function(childObj) {
@@ -980,7 +975,7 @@
             return process.argv[2];
         };
         getPath = function() {
-            return process.argv[3]; 
+            return process.argv[3];
         };
     } else if (qp.html5) {
         getAppName = function() {
@@ -997,14 +992,14 @@
             return path;
         };
     } //}}}
-    function go(platform, name, path, opt) {//{{{
+    function go(platform, name, path, opt) { //{{{
         var obj = qp.resolveRoute(platform, name, path);
         obj.fn(new qp.Client(platform, name, path, opt));
     } //}}}
     function main() { //{{{
-        if(qp.nodejs) {
+        if (qp.nodejs) {
             var platform = "command";
-        } else if(qp.html5) {
+        } else if (qp.html5) {
             var platform = "html5";
         }
         go(platform, getAppName(), getPath());
@@ -1080,7 +1075,10 @@
             var devServer = function(req, res) {
                 var name = client.path;
                 var path = req.url.slice(1).split(/[.?]/)[0];
-                go("http", name, path, {req: req, res: res})
+                go("http", name, path, {
+                    req: req,
+                    res: res
+                })
             };
             var app = require("http").createServer(devServer);
             var io = require("socket.io").listen(app);
@@ -1095,5 +1093,5 @@
         });
     } //}}}
     // file end {{{
-    })();
+})();
 // }}}
