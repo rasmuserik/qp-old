@@ -13,7 +13,8 @@
         "web": "http://rasmuserik.com"
     }],
     "dependencies": {
-        "socket.io": "*"
+        "socket.io": "*",
+        "closure-compiler": "*"
     },
     "engines": {
         "node": "*"

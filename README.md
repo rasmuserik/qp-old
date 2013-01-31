@@ -3,9 +3,10 @@
 
 Lifting various reusable code out to a personal JS-library
 
+
 Becoming closure-advanced-optimizable
 
-Getting started:
+## Getting started:
 
     $ mkdir MyApp && cd MyApp 
     $ cat > package.json

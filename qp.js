@@ -1,16 +1,22 @@
+/*jshint sub:true*/
 /*global qp process setTimeout location require console window localStorage document module __dirname __filename*/
+if(typeof goog === "undefined") {
+    goog = {provide: function() {}};
+}
+goog.provide("qp");
+/** @const */
+qp = {};
 (function() {
     "use strict";
-    var qp = {};
     // setup {{{
-    if (typeof exports === "undefined") {
-        window.qp = qp;
-    } else {
-        module.exports = qp;
+    if (typeof module !== "undefined") {
+        module["exports"] = qp;
     }
     //}}}
     // environment {{{
+    /** @const */
     qp.nodejs = typeof process !== "undefined" && process.versions && process.versions.node;
+    /** @const */
     qp.html5 = !qp.nodejs;
     qp.host = "localhost";
     qp.port = 1234;
@@ -65,7 +71,7 @@
     var uniqIdCounter = 0; // }}}
     qp.nextTick = function(fn) { //{{{
         if (qp.nodejs) {
-            process.nextTick(fn);
+            process["nextTick"](fn);
         } else {
             setTimeout(fn, 0);
         }
@@ -150,12 +156,12 @@
     if (qp.nodejs) {
         (function() {
             var db = qp.trycatch(function() {
-                return JSON.parse(require("fs").readFileSync(process.env.HOME + "/data/local.sqlite3"));
+                return JSON.parse(require("fs")["readFileSync"](process["env"]["HOME"] + "/data/local.sqlite3"));
             }, function() {
                 return {};
             });
             var syncLocalStorage = qp.throttledFn(function() {
-                require("fs").writeFile(process.env.HOME + "/data/local.sqlite3", JSON.stringify(db, null, "  "));
+                require("fs")["writeFile"](process["env"]["HOME"] + "/data/local.sqlite3", JSON.stringify(db, null, "  "));
             });
             var lastSync = 0;
             qp.local = {
@@ -228,22 +234,22 @@
         var fs = require("fs");
         var dirs = {};
         qp.mkdir = function(path) {
-            if (!dirs[path] && !fs.existsSync(path)) {
+            if (!dirs[path] && !fs["existsSync"](path)) {
                 path = path.split("/");
                 while (!path[path.length - 1]) {
                     path.pop();
                 }
                 qp.mkdir(path.slice(0, -1).join("/"));
-                fs.mkdirSync(path.join("/"));
+                fs["mkdirSync"](path.join("/"));
                 dirs[path] = true;
             }
         };
         qp.cp = function(src, dst, callback) {
-            require("util").pump(fs.createReadStream(src), fs.createWriteStream(dst), callback);
+            require("util").pump(fs["createReadStream"](src), fs["createWriteStream"](dst), callback);
         };
         qp.mtime = function(filename) {
             return qp.trycatch(function() {
-                return fs.statSync(filename).mtime.getTime();
+                return fs["statSync"](filename).mtime.getTime();
             }, function() {
                 return 0;
             });
@@ -266,7 +272,7 @@
     // save/load json {{{
     if (qp.nodejs) {
         qp.saveJSON = function(filename, content, callback) {
-            require("fs").writeFile(filename, JSON.stringify(content), callback);
+            require("fs")["writeFile"](filename, JSON.stringify(content), callback);
         };
         qp.loadJSONSync = function(filename, defaultVal) {
             if (!defaultVal) {
@@ -280,45 +286,46 @@
                     return defaultVal;
                 };
             return qp.trycatch(function() {
-                return JSON.parse(require("fs").readFileSync(filename, "utf8"));
+                return JSON.parse(require("fs")["readFileSync"](filename, "utf8"));
             }, fn);
         };
     } //}}}
     // }}}
     // qp.V2d {{{
+    /** @constructor */
     qp.V2d = function(x, y) { //{{{
         this.x = x;
         this.y = y;
     }; //}}}
-    var V2d = qp.V2d;
-    V2d.prototype.add = function(v) { //{{{
+    qp.V2d.prototype.add = function(v) { //{{{
         return new V2d(this.x + v.x, this.y + v.y);
     }; //}}}
-    V2d.prototype.sub = function(v) { //{{{
+    qp.V2d.prototype.sub = function(v) { //{{{
         return new V2d(this.x - v.x, this.y - v.y);
     }; //}}}
-    V2d.prototype.scale = function(a) { //{{{
+    qp.V2d.prototype.scale = function(a) { //{{{
         return new V2d(this.x * a, this.y * a);
     }; //}}}
-    V2d.prototype.length = function() { //{{{
+    qp.V2d.prototype.length = function() { //{{{
         return Math.sqrt(this.x * this.x + this.y * this.y);
     }; //}}}
-    V2d.prototype.dot = function(v) { //{{{
+    qp.V2d.prototype.dot = function(v) { //{{{
         return this.x * v.x + this.y * v.y;
     }; //}}}
-    V2d.prototype.norm = function() { //{{{
+    qp.V2d.prototype.norm = function() { //{{{
         var len = this.length();
         return this.scale(len ? 1 / len : 0);
     }; //}}}
-    V2d.prototype.dist = function(v) { //{{{
+    qp.V2d.prototype.dist = function(v) { //{{{
         var d = this.sub(v);
         return Math.sqrt(d.dot(d));
     }; //}}}
-    V2d.prototype.neg = function(v) { //{{{
+    qp.V2d.prototype.neg = function(v) { //{{{
         return new V2d(-this.x, -this.y);
     }; //}}}
     //}}}
     // Graph algorithms {{{
+    /*
     // # Spring-based graph layout {{{
     // This is experimental code, not really intended for reading yet.
     qp.init = function(app) {
@@ -402,11 +409,9 @@
         };
         var runno = 0;
         var drawGraph = function() {
-            /*
-        if((++runno) & 15) {
-            return undefined;
-        }
-        */
+    //    if((++runno) & 15) {
+            //return undefined;
+        //}
             var minx = Math.min.apply(undefined, graph.map(function(e) {
                 return e.pos.x;
             }));
@@ -456,6 +461,7 @@
         };
         run();
     }; //}}}
+    */
     qp.graphUpdateParents = function(graph) { //{{{
         qp.objForEach(graph, function(_, node) {
             node.parents = {};
@@ -519,8 +525,10 @@
     // }}}
     // HXML {{{
     qp.HXML = function(xml) {
+        /*
         if (typeof xml === "string") {}
         if (Array.isArray(xml)) {}
+        */
     };
     var xmlEntities = { //{{{
         lt: "<",
@@ -810,12 +818,12 @@
         test.done();
     }
     if (qp.html5) {
-        window.testClient = testClient;
+        window["testClient"] = testClient;
     }
     //}}}
     function runTests() { //{{{
         var Browser = require("zombie");
-        var test = new TestSuite("BibData", process.exit);
+        var test = new TestSuite("BibData", process["exit"]);
 
         // testServer(test.suite("server"));
 
@@ -825,7 +833,7 @@
         browser.visit("http://" + qp.host + ":" + qp.port, {
             debug: true
         }).then(function() {
-            browser.window.testClient(clientSuite);
+            browser["window"]["testClient"](clientSuite);
         }).fail(function() {
             clientSuite.fail("could not start client-test");
             test.done();
@@ -862,9 +870,6 @@
         test.assert(!qp.strStartsWith("foo", "foobar"), "strstartswith4");
         test.done();
     };
-    // }}}
-    // build {{{
-    qp.build = function() {};
     // }}}
     // qp.Client {{{
     qp.Client = function(platform, app, path, opt) {
@@ -972,14 +977,14 @@
     var getPath, getAppName; //{{{
     if (qp.nodejs) {
         getAppName = function() {
-            return process.argv[2];
+            return process["argv"][2];
         };
         getPath = function() {
-            return process.argv[3];
+            return process["argv"][3];
         };
     } else if (qp.html5) {
         getAppName = function() {
-            return window.qpApp || location.host.split(".")[0];
+            return window["qpApp"] || location.host.split(".")[0];
         };
         getPath = function() {
             var path;
@@ -1093,6 +1098,55 @@
             fn: startDevServer
         });
     } //}}}
+    // build {{{
+    if (qp.nodejs) {
+        var concatSource = function(callback) {
+            var fs = require("fs");
+            var appSource, qpSource;
+            // read the app source code
+            fs["readFile"](process["argv"][1], "utf8", function(err, data) {
+                if(err) throw err;
+                appSource = data;
+                fileLoaded();
+            });
+            // read the qp-library source code
+            fs["readFile"](__filename, "utf8", function(err, data) {
+                if(err) throw err;
+                qpSource = data;
+                fileLoaded();
+            });
+            // concatenate
+            function fileLoaded() {
+                if(!qpSource || !appSource) return;
+                var dir = process["cwd"]() + "/build";
+                qp.mkdir(dir);
+                var outputFileName = dir + "/q.js";
+                var closure = require("closure-compiler");
+                console.log("running closure compiler");
+                //var source = "(function(){" + qpSource + appSource + "})()"
+                var source = "";
+                source += "var process = undefined;"
+                source += qpSource + appSource;
+                closure["compile"](source, {"compilation_level": "ADVANCED_OPTIMIZATIONS"}, function(err, result) {
+                    if(err) throw err;
+                    console.log("writing", outputFileName);
+                    fs["writeFile"](outputFileName, result);
+                });
+            }
+        };
+        var optimiseSource = function(directory) {
+        };
+        var buildApp = function(client) {
+            concatSource(function() {
+            });
+        };
+        qp.register({
+            platform: "command",
+            name: "build",
+            fn: buildApp
+        });
+    }
+    // }}}
     // file end {{{
 })();
 // }}}
