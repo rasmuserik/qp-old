@@ -1,11 +1,6 @@
 /*jshint sub:true*/
 /*global qp process setTimeout location require console window localStorage document module __dirname __filename*/
-if(typeof goog === "undefined") {
-    goog = {provide: function() {}};
-}
-goog.provide("qp");
-/** @const */
-qp = {};
+var qp = {};
 (function() {
     "use strict";
     // setup {{{
@@ -14,10 +9,8 @@ qp = {};
     }
     //}}}
     // environment {{{
-    /** @const */
-    qp.nodejs = typeof process !== "undefined" && process.versions && process.versions.node;
-    /** @const */
-    qp.html5 = !qp.nodejs;
+    qp.nodejs = typeof PLATFORM_NODEJS !== "undefined" ? PLATFORM_NODEJS : typeof process !== "undefined";
+    qp.html5 = typeof PLATFORM_HTML5 !== "undefined" ? PLATFORM_HTML5 : !qp.nodejs;
     qp.host = "localhost";
     qp.port = 1234;
     // }}}
@@ -155,6 +148,7 @@ qp = {};
     // local storage {{{
     if (qp.nodejs) {
         (function() {
+            //TODO: change api
             var db = qp.trycatch(function() {
                 return JSON.parse(require("fs")["readFileSync"](process["env"]["HOME"] + "/data/local.sqlite3"));
             }, function() {
@@ -233,7 +227,9 @@ qp = {};
     if (qp.nodejs) {
         var fs = require("fs");
         var dirs = {};
+    }
         qp.mkdir = function(path) {
+            if(qp.nodejs) {
             if (!dirs[path] && !fs["existsSync"](path)) {
                 path = path.split("/");
                 while (!path[path.length - 1]) {
@@ -243,18 +239,23 @@ qp = {};
                 fs["mkdirSync"](path.join("/"));
                 dirs[path] = true;
             }
+            }
         };
         qp.cp = function(src, dst, callback) {
+            if(qp.nodejs) {
             require("util").pump(fs["createReadStream"](src), fs["createWriteStream"](dst), callback);
+            }
         };
         qp.mtime = function(filename) {
+            if(qp.nodejs) {
             return qp.trycatch(function() {
                 return fs["statSync"](filename).mtime.getTime();
             }, function() {
                 return 0;
             });
+            }
         };
-    } //}}}
+    //}}}
     qp.shuffleArray = function(arr) { //{{{
         var i = arr.length;
         while (i) {
@@ -901,11 +902,11 @@ qp = {};
         "undefined": {}
     };
     if (qp.nodejs) {
-        apps.command = {};
-        apps.http = {};
+        apps["command"] = {};
+        apps["http"] = {};
     }
     if (qp.html5) {
-        apps.html5 = {};
+        apps["html5"] = {};
     }
     //}}}
     function registerRoute(platform, name, path, obj) { //{{{
@@ -1125,9 +1126,15 @@ qp = {};
                 console.log("running closure compiler");
                 //var source = "(function(){" + qpSource + appSource + "})()"
                 var source = "";
-                source += "var process = undefined;"
-                source += qpSource + appSource;
-                closure["compile"](source, {"compilation_level": "ADVANCED_OPTIMIZATIONS"}, function(err, result) {
+                //source += "/**@const*/var process = false";
+                source += "/**@const*/var PLATFORM_NODEJS = true;";
+                source += qpSource.replace("module[\"exports\"] = qp;", "");
+                //source += appSource.replace(/require\s*\(\s*['"](\.\/)?qp['"]\s*\)/g, "qp");
+                closure["compile"](source, {
+                    "compilation_level": "ADVANCED_OPTIMIZATIONS",
+                    "use_types_for_optimization": "--use_types_for_optimization",
+                    "formatting": "PRETTY_PRINT"
+                }, function(err, result) {
                     if(err) throw err;
                     console.log("writing", outputFileName);
                     fs["writeFile"](outputFileName, result);
