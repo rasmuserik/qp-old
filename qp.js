@@ -1087,9 +1087,9 @@ var qp = {};
                     res: res
                 });
             };
-            var app = require("http").createServer(devServer);
-            var io = require("socket.io").listen(app);
-            app.listen(qp.port, qp.host, function() {
+            var app = require("http")["createServer"](devServer);
+            var io = require("socket.io")["listen"](app);
+            app["listen"](qp.port, qp.host, function() {
                 console.log("dev-server running on", qp.host + ":" + qp.port);
             });
         };
@@ -1129,7 +1129,7 @@ var qp = {};
                 //source += "/**@const*/var process = false";
                 source += "/**@const*/var PLATFORM_NODEJS = true;";
                 source += qpSource.replace("module[\"exports\"] = qp;", "");
-                //source += appSource.replace(/require\s*\(\s*['"](\.\/)?qp['"]\s*\)/g, "qp");
+                source += appSource.replace(/require\s*\(\s*['"](\.\/)?qp['"]\s*\)/g, "qp");
                 closure["compile"](source, {
                     "compilation_level": "ADVANCED_OPTIMIZATIONS",
                     "use_types_for_optimization": "--use_types_for_optimization",
