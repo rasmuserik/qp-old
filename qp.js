@@ -1,5 +1,5 @@
 /*jshint sub:true*/
-/*global qp process setTimeout location require console window localStorage document module __dirname __filename*/
+/*global PLATFORM_NODEJS PLATFORM_HTML5 process setTimeout location require console window localStorage document module __dirname __filename*/
 /**
  * The qp module is a collection of utilities.
  * @namespace
@@ -308,13 +308,13 @@ var qp = {};
         this.y = y;
     }; //}}}
     qp.V2d.prototype.add = function(v) { //{{{
-        return new V2d(this.x + v.x, this.y + v.y);
+        return new qp.V2d(this.x + v.x, this.y + v.y);
     }; //}}}
     qp.V2d.prototype.sub = function(v) { //{{{
-        return new V2d(this.x - v.x, this.y - v.y);
+        return new qp.V2d(this.x - v.x, this.y - v.y);
     }; //}}}
     qp.V2d.prototype.scale = function(a) { //{{{
-        return new V2d(this.x * a, this.y * a);
+        return new qp.V2d(this.x * a, this.y * a);
     }; //}}}
     qp.V2d.prototype.length = function() { //{{{
         return Math.sqrt(this.x * this.x + this.y * this.y);
@@ -331,7 +331,7 @@ var qp = {};
         return Math.sqrt(d.dot(d));
     }; //}}}
     qp.V2d.prototype.neg = function(v) { //{{{
-        return new V2d(-this.x, -this.y);
+        return new qp.V2d(-this.x, -this.y);
     }; //}}}
     //}}}
     // Graph algorithms {{{
@@ -1138,7 +1138,7 @@ var qp = {};
                 //source += "/**@const*/var process = false";
                 source += "/**@const*/var PLATFORM_NODEJS = true;";
                 source += qpSource.replace("module[\"exports\"] = qp;", "");
-                source += appSource.replace(/require\s*\(\s*['"](\.\/)?qp['"]\s*\)/g, "qp");
+                source += appSource.replace(/qp\s*=\s*require\s*\(\s*['"](\.\/)?qp['"]\s*\)/g, "");
                 closure["compile"](source, {
                     "compilation_level": "ADVANCED_OPTIMIZATIONS",
                     "use_types_for_optimization": "--use_types_for_optimization",

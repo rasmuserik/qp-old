@@ -1,6 +1,4 @@
-if (typeof qp === "undefined") {
-    qp = require("./qp");
-}
+if (typeof qp === "undefined") qp = require("./qp");
 
 function defaultFn(client) {
     client.text("Hello from app");
