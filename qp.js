@@ -1,5 +1,9 @@
 /*jshint sub:true*/
 /*global qp process setTimeout location require console window localStorage document module __dirname __filename*/
+/**
+ * The qp module is a collection of utilities.
+ * @namespace
+ */
 var qp = {};
 (function() {
     "use strict";
@@ -15,6 +19,11 @@ var qp = {};
     qp.port = 1234;
     // }}}
     // util {{{
+    // qp.exec(cmd, callback) {{{
+    qp.exec = function(cmd, callback) {
+        require("child_process")["exec"](cmd, callback);
+    };
+    // }}}
     qp.trycatch = function(fn1, fn2) { //{{{
         try {
             return fn1();
@@ -1121,7 +1130,7 @@ var qp = {};
                 if(!qpSource || !appSource) return;
                 var dir = process["cwd"]() + "/build";
                 qp.mkdir(dir);
-                var outputFileName = dir + "/q.js";
+                var outputFileName = dir + "/node.js";
                 var closure = require("closure-compiler");
                 console.log("running closure compiler");
                 //var source = "(function(){" + qpSource + appSource + "})()"
@@ -1141,10 +1150,11 @@ var qp = {};
                 });
             }
         };
-        var optimiseSource = function(directory) {
-        };
         var buildApp = function(client) {
             concatSource(function() {
+            });
+            qp.exec("./node_modules/jsdoc/jsdoc -d doc qp.js", function(err) {
+                if(err) throw err;
             });
         };
         qp.register({
