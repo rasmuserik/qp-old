@@ -14,7 +14,8 @@ function defaultFn(client) {
 }
 
 qp.register({
-    path: "",
+    platforms: ["command", "http"],
+    name: "app",
     fn: defaultFn
 });
 qp.register({

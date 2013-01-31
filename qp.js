@@ -13,6 +13,7 @@ var qp = {};
     }
     //}}}
     // environment {{{
+    //qp.nodejs = typeof qpconfig === "object" ? qpconfig.nodejs : typeof process !== "undefined";
     qp.nodejs = typeof PLATFORM_NODEJS !== "undefined" ? PLATFORM_NODEJS : typeof process !== "undefined";
     qp.html5 = typeof PLATFORM_HTML5 !== "undefined" ? PLATFORM_HTML5 : !qp.nodejs;
     qp.host = "localhost";
@@ -1085,6 +1086,8 @@ var qp = {};
         }
     } //}}}
     //}}}
+    // builtin routes {{{
+    if(typeof BUILTIN_ROUTES !== "undefined" ? BUILTIN_ROUTES : true) {
     // dev-server {{{
     if (qp.nodejs) {
         var startDevServer = function(client) {
@@ -1136,13 +1139,16 @@ var qp = {};
                 //var source = "(function(){" + qpSource + appSource + "})()"
                 var source = "";
                 //source += "/**@const*/var process = false";
+                source += "/**@const*/var BUILTIN_ROUTES = false;";
                 source += "/**@const*/var PLATFORM_NODEJS = true;";
+                source += "/**@const*/var PLATFORM_HTML5 = false;";
+                source += "/**@const*/var qpconfig = {bnodejs:true};";
                 source += qpSource.replace("module[\"exports\"] = qp;", "");
                 source += appSource.replace(/qp\s*=\s*require\s*\(\s*['"](\.\/)?qp['"]\s*\)/g, "");
                 closure["compile"](source, {
-                    "compilation_level": "ADVANCED_OPTIMIZATIONS",
                     "use_types_for_optimization": "--use_types_for_optimization",
-                    "formatting": "PRETTY_PRINT"
+                    //"formatting": "PRETTY_PRINT",
+                    "compilation_level": "ADVANCED_OPTIMIZATIONS"
                 }, function(err, result) {
                     if(err) throw err;
                     console.log("writing", outputFileName);
@@ -1162,6 +1168,8 @@ var qp = {};
             name: "build",
             fn: buildApp
         });
+    }
+    // }}}
     }
     // }}}
     // file end {{{
