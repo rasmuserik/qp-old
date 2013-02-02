@@ -100,7 +100,7 @@ var qp = {};
      * @param {?string} prefix
      * @return {string}
      */
-    qp.uniqId = function(prefix) { //{{{
+    qp.uniqId = function(prefix) {
         prefix = prefix || "_";
         ++uniqIdCounter;
         return prefix + String(uniqIdCounter);
@@ -323,6 +323,9 @@ var qp = {};
         var dirs = {};
     }
 
+    /** Synchronously create a directory, possibly also create parent directory
+     * @param {string} path
+     */
     qp.mkdir = function(path) {
         if (qp.nodejs) {
             if (!dirs[path] && !fs["existsSync"](path)) {
@@ -336,11 +339,19 @@ var qp = {};
             }
         }
     };
+    /** Copy a file
+     * @param {string} src
+     * @param {string} dst
+     * @param {function} callback
+     */
     qp.cp = function(src, dst, callback) {
         if (qp.nodejs) {
             require("util").pump(fs["createReadStream"](src), fs["createWriteStream"](dst), callback);
         }
     };
+    /** synchronously get mtime of file
+     * @param {string} filename
+     */
     qp.mtime = function(filename) {
         if (qp.nodejs) {
             return qp.trycatch(function() {
@@ -351,7 +362,12 @@ var qp = {};
         }
     };
     //}}}
-    qp.shuffleArray = function(arr) { //{{{
+    //shuffleArray{{{
+    /** Put an array in random order (in-place)
+     * @param {Array} arr the array to shuffle
+     * @return {Array}
+     */
+    qp.shuffleArray = function(arr) {
         var i = arr.length;
         while (i) {
             --i;
@@ -362,33 +378,50 @@ var qp = {};
         }
         return arr;
     }; //}}}
-    qp.arrayPickRandom = function(arr) { //{{{
+    //arrayPickRandom{{{
+    /** Pick a random element from an array
+     * @param {Array} arr
+     */
+    qp.arrayPickRandom = function(arr) {
         return arr[Math.random() * arr.length | 0];
     }; //}}}
-    // save/load json {{{
-    if (qp.nodejs) {
-        qp.saveJSON = function(filename, content, callback) {
-            require("fs")["writeFile"](filename, JSON.stringify(content), callback);
-        };
-        qp.loadJSONSync = function(filename, defaultVal) {
-            if (!defaultVal) {
-                defaultVal = function(e) {
-                    return {
-                        err: e
-                    };
+    // saveJSON {{{
+    /** save json to a file
+     * @param {string} filename
+     * @param {*} content must be json-able
+     * @param {function} callback
+     */
+    qp.saveJSON = function(filename, content, callback) {
+        require("fs")["writeFile"](filename, JSON.stringify(content), callback);
+    };
+    //}}}
+    //loadJSONSync{{{
+    /** Load and parse json from a file
+     * @param {string} filename
+     * @param {*} defaultVal default value, or a function that yields the default value. This will be returned/called if the file cannot be loaded/parsed to json
+     */
+    qp.loadJSONSync = function(filename, defaultVal) {
+        if (!defaultVal) {
+            defaultVal = function(e) {
+                return {
+                    err: e
                 };
-            }
-            var fn = typeof defaultVal === "function" ? defaultVal : function(err) {
-                    return defaultVal;
-                };
-            return qp.trycatch(function() {
-                return JSON.parse(require("fs")["readFileSync"](filename, "utf8"));
-            }, fn);
-        };
+            };
+        }
+        var fn = typeof defaultVal === "function" ? defaultVal : function(err) {
+                return defaultVal;
+            };
+        return qp.trycatch(function() {
+            return JSON.parse(require("fs")["readFileSync"](filename, "utf8"));
+        }, fn);
     } //}}}
     // }}}
     // qp.V2d {{{
-    /** @constructor */
+    /** simple 2d vector
+     * @constructor 
+     * @param {number} x
+     * @param {number} y
+     */
     qp.V2d = function(x, y) { //{{{
         this.x = x;
         this.y = y;
