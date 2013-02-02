@@ -38,7 +38,7 @@ var qp = {};
      * @param {function} fn2 exception handling function, called if fn1 throw. The parameter will be execption thrown
      * @return result from fn1 or fn2
      */
-    qp.trycatch = function(fn1, fn2) { 
+    qp.trycatch = function(fn1, fn2) {
         try {
             return fn1();
         } catch (e) {
@@ -87,7 +87,7 @@ var qp = {};
      * @param {Array.<string>} arr 
      * @param {Object.<string,boolean>}
      */
-    qp.list2obj = function(arr) { 
+    qp.list2obj = function(arr) {
         var i;
         var result = {};
         for (i = 0; i < arr.length; ++i) {
@@ -111,7 +111,7 @@ var qp = {};
      * @param {function()} fn
      * @return {undefined}
      */
-    qp.nextTick = function(fn) { 
+    qp.nextTick = function(fn) {
         if (qp.nodejs) {
             process["nextTick"](fn);
         } else {
@@ -123,7 +123,7 @@ var qp = {};
      * @param {Object} obj
      * @return {boolean}
      */
-    qp.notEmptyObject = function (obj) { //{{{
+    qp.notEmptyObject = function(obj) { //{{{
         return Object.keys(obj).length !== 0;
     } //}}}
     //urlUnescape{{{
@@ -131,7 +131,7 @@ var qp = {};
      * @param {string} str
      * @return {string}
      */
-    function urlUnescape(str) { 
+    function urlUnescape(str) {
         return str.replace(/\+/g, " ").replace(/%[0-9a-fA-F][0-9a-fA-F]/g, function(code) {
             return String.fromCharCode(parseInt(code.slice(1), 16));
         });
@@ -142,7 +142,7 @@ var qp = {};
      * @param {number=} delay how long (in ms.) should the shortest interval between function calls be. defaults 5000ms
      * @return {function(): undefined}
      */
-    qp.throttledFn = function(fn, delay) { 
+    qp.throttledFn = function(fn, delay) {
         delay = delay || 5000;
         var lastRun = 0;
         var scheduled = false;
@@ -175,7 +175,7 @@ var qp = {};
      * @param {function} fn
      * @param {function} done
      */
-    qp.asyncArrayForEach = function(arr, fn, done) { 
+    qp.asyncArrayForEach = function(arr, fn, done) {
         var count = arr.length;
         var cb = function() {
             if (count === 0) {
@@ -192,7 +192,7 @@ var qp = {};
      * @param {string} name
      * @return {string}
      */
-    qp.name2url = function(name) { 
+    qp.name2url = function(name) {
         return (String(name)).replace(new RegExp("[^a-zA-Z0-9_-]", "g"), function(c) {
             var subs = {
                 "Æ": "AE",
@@ -322,9 +322,9 @@ var qp = {};
         var fs = require("fs");
         var dirs = {};
     }
-    
-        qp.mkdir = function(path) {
-            if(qp.nodejs) {
+
+    qp.mkdir = function(path) {
+        if (qp.nodejs) {
             if (!dirs[path] && !fs["existsSync"](path)) {
                 path = path.split("/");
                 while (!path[path.length - 1]) {
@@ -334,22 +334,22 @@ var qp = {};
                 fs["mkdirSync"](path.join("/"));
                 dirs[path] = true;
             }
-            }
-        };
-        qp.cp = function(src, dst, callback) {
-            if(qp.nodejs) {
+        }
+    };
+    qp.cp = function(src, dst, callback) {
+        if (qp.nodejs) {
             require("util").pump(fs["createReadStream"](src), fs["createWriteStream"](dst), callback);
-            }
-        };
-        qp.mtime = function(filename) {
-            if(qp.nodejs) {
+        }
+    };
+    qp.mtime = function(filename) {
+        if (qp.nodejs) {
             return qp.trycatch(function() {
                 return fs["statSync"](filename).mtime.getTime();
             }, function() {
                 return 0;
             });
-            }
-        };
+        }
+    };
     //}}}
     qp.shuffleArray = function(arr) { //{{{
         var i = arr.length;
@@ -1172,89 +1172,88 @@ var qp = {};
     } //}}}
     //}}}
     // builtin routes {{{
-    if(typeof BUILTIN_ROUTES !== "undefined" ? BUILTIN_ROUTES : true) {
-    // dev-server {{{
-    if (qp.nodejs) {
-        var startDevServer = function(client) {
-            var devServer = function(req, res) {
-                var name = client.path;
-                var path = req.url.slice(1).split(/[.?]/)[0];
-                go("http", name, path, {
-                    req: req,
-                    res: res
+    if (typeof BUILTIN_ROUTES !== "undefined" ? BUILTIN_ROUTES : true) {
+        // dev-server {{{
+        if (qp.nodejs) {
+            var startDevServer = function(client) {
+                var devServer = function(req, res) {
+                    var name = client.path;
+                    var path = req.url.slice(1).split(/[.?]/)[0];
+                    go("http", name, path, {
+                        req: req,
+                        res: res
+                    });
+                };
+                var app = require("http")["createServer"](devServer);
+                var io = require("socket.io")["listen"](app);
+                app["listen"](qp.port, qp.host, function() {
+                    console.log("dev-server running on", qp.host + ":" + qp.port);
                 });
             };
-            var app = require("http")["createServer"](devServer);
-            var io = require("socket.io")["listen"](app);
-            app["listen"](qp.port, qp.host, function() {
-                console.log("dev-server running on", qp.host + ":" + qp.port);
+            qp.register({
+                platform: "command",
+                name: "dev-server",
+                fn: startDevServer
             });
-        };
-        qp.register({
-            platform: "command",
-            name: "dev-server",
-            fn: startDevServer
-        });
-    } //}}}
-    // build {{{
-    if (qp.nodejs) {
-        var concatSource = function(callback) {
-            var fs = require("fs");
-            var appSource, qpSource;
-            // read the app source code
-            fs["readFile"](process["argv"][1], "utf8", function(err, data) {
-                if(err) throw err;
-                appSource = data;
-                fileLoaded();
-            });
-            // read the qp-library source code
-            fs["readFile"](__filename, "utf8", function(err, data) {
-                if(err) throw err;
-                qpSource = data;
-                fileLoaded();
-            });
-            // concatenate
-            function fileLoaded() {
-                if(!qpSource || !appSource) return;
-                var dir = process["cwd"]() + "/build";
-                qp.mkdir(dir);
-                var outputFileName = dir + "/node.js";
-                var closure = require("closure-compiler");
-                console.log("running closure compiler");
-                //var source = "(function(){" + qpSource + appSource + "})()"
-                var source = "";
-                //source += "/**@const*/var process = false";
-                source += "/**@const*/var BUILTIN_ROUTES = false;";
-                source += "/**@const*/var PLATFORM_NODEJS = true;";
-                source += "/**@const*/var PLATFORM_HTML5 = false;";
-                source += "/**@const*/var qpconfig = {bnodejs:true};";
-                source += qpSource.replace("module[\"exports\"] = qp;", "");
-                source += appSource.replace(/qp\s*=\s*require\s*\(\s*['"](\.\/)?qp['"]\s*\)/g, "");
-                closure["compile"](source, {
-                    "use_types_for_optimization": "--use_types_for_optimization",
-                    //"formatting": "PRETTY_PRINT",
-                    "compilation_level": "ADVANCED_OPTIMIZATIONS"
-                }, function(err, result) {
-                    if(err) throw err;
-                    console.log("writing", outputFileName);
-                    fs["writeFile"](outputFileName, result);
+        } //}}}
+        // build {{{
+        if (qp.nodejs) {
+            var concatSource = function(callback) {
+                var fs = require("fs");
+                var appSource, qpSource;
+                // read the app source code
+                fs["readFile"](process["argv"][1], "utf8", function(err, data) {
+                    if (err) throw err;
+                    appSource = data;
+                    fileLoaded();
                 });
-            }
-        };
-        var buildApp = function(client) {
-            concatSource(function() {
+                // read the qp-library source code
+                fs["readFile"](__filename, "utf8", function(err, data) {
+                    if (err) throw err;
+                    qpSource = data;
+                    fileLoaded();
+                });
+                // concatenate
+                function fileLoaded() {
+                    if (!qpSource || !appSource) return;
+                    var dir = process["cwd"]() + "/build";
+                    qp.mkdir(dir);
+                    var outputFileName = dir + "/node.js";
+                    var closure = require("closure-compiler");
+                    console.log("running closure compiler");
+                    //var source = "(function(){" + qpSource + appSource + "})()"
+                    var source = "";
+                    //source += "/**@const*/var process = false";
+                    source += "/**@const*/var BUILTIN_ROUTES = false;";
+                    source += "/**@const*/var PLATFORM_NODEJS = true;";
+                    source += "/**@const*/var PLATFORM_HTML5 = false;";
+                    source += "/**@const*/var qpconfig = {bnodejs:true};";
+                    source += qpSource.replace("module[\"exports\"] = qp;", "");
+                    source += appSource.replace(/qp\s*=\s*require\s*\(\s*['"](\.\/)?qp['"]\s*\)/g, "");
+                    closure["compile"](source, {
+                        "use_types_for_optimization": "--use_types_for_optimization",
+                        //"formatting": "PRETTY_PRINT",
+                        "compilation_level": "ADVANCED_OPTIMIZATIONS"
+                    }, function(err, result) {
+                        if (err) throw err;
+                        console.log("writing", outputFileName);
+                        fs["writeFile"](outputFileName, result);
+                    });
+                }
+            };
+            var buildApp = function(client) {
+                concatSource(function() {});
+                qp.exec("./node_modules/jsdoc/jsdoc -d doc qp.js", function(err) {
+                    if (err) throw err;
+                });
+            };
+            qp.register({
+                platform: "command",
+                name: "build",
+                fn: buildApp
             });
-            qp.exec("./node_modules/jsdoc/jsdoc -d doc qp.js", function(err) {
-                if(err) throw err;
-            });
-        };
-        qp.register({
-            platform: "command",
-            name: "build",
-            fn: buildApp
-        });
-    }
-    // }}}
+        }
+        // }}}
     }
     // }}}
     // file end {{{
