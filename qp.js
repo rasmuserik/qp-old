@@ -5,6 +5,7 @@
  * @namespace
  */
 var qp = {};
+qp.fn = {};
 (function() {
     "use strict";
     // setup {{{
@@ -22,30 +23,13 @@ var qp = {};
     /** @type {number} */
     qp.port = 1234;
     // }}}
-    // util {{{
-    // qp.exec {{{
-    /** Run a shell commend 
-     * @param {string} command
-     * @param {function} callback
-     */
-    qp.exec = function(cmd, callback) {
-        require("child_process")["exec"](cmd, callback);
-    };
-    // }}}
-    //qp.trycatch{{{
-    /** Functional exception handling
-     * @param {function} fn1 function to call
-     * @param {function} fn2 exception handling function, called if fn1 throw. The parameter will be execption thrown
-     * @return result from fn1 or fn2
-     */
-    qp.trycatch = function(fn1, fn2) {
-        try {
-            return fn1();
-        } catch (e) {
-            return fn2(e);
-        }
-    }; //}}}
-    //qp.extend {{{
+    //util{{{
+    if (qp.nodejs) {
+        var fs = require("fs");
+        var dirs = {};
+    }
+    //{{{obj
+    //extend{{{
     /** Copy elements from a list of objects onto target
      * @type {function(Object, ...Object): Object}
      */
@@ -58,7 +42,48 @@ var qp = {};
         }
         return target;
     }; //}}}
-    // qp.listpp {{{
+    // valmap {{{
+    /** map a function across the values of an object, and return a new object with the resulting values
+     * @param {Object} obj
+     * @param {function} fn
+     * @return {Object}
+     */
+    qp.valmap = function(obj, fn) {
+        var result = {};
+        Object.keys(obj).forEach(function(key) {
+            result[key] = fn(obj[key]);
+        });
+        return result;
+    }; //}}}
+    //notEmpty{{{
+    /** Check if an object is an empty object
+     * @param {Object} obj
+     * @return {boolean}
+     */
+    qp.notEmptyObject = function(obj) { 
+        return Object.keys(obj).length !== 0;
+    } //}}}
+    // emptyObject {{{
+    /** Check if an object is an empty object
+     * @param {Object} obj
+     * @return {boolean}
+     */
+    qp.emptyObject = function(obj) {
+        return Object.keys(obj).length === 0;
+    }; //}}}
+    // objForEach {{{
+    /** call a function on each key/val
+     * @param {Object} obj
+     * @param {function(string,*)} fn
+     */
+    qp.objForEach = function(obj, fn) {
+        Object.keys(obj).forEach(function(key) {
+            fn(key, obj[key]);
+        });
+    }; //}}}
+    //}}}
+    //{{{arr
+    //listpp{{{
     /** Prettyprint a list
      * @param {Array} list list to prettyprint
      * @param {String} indent string to use as indent (some spaces or tabs)
@@ -95,54 +120,89 @@ var qp = {};
         }
         return result;
     }; //}}}
-    //uniqId{{{
-    /** get an uniq id by concatenating a prefix to a sequential number
-     * @param {?string} prefix
-     * @return {string}
+    // flatteArray {{{
+    /** collapse nested arrays into a single new array
+     * @param {Array} arr
+     * @return {Array}
      */
-    qp.uniqId = function(prefix) {
-        prefix = prefix || "_";
-        ++uniqIdCounter;
-        return prefix + String(uniqIdCounter);
-    };
-    var uniqIdCounter = 0; // }}}
-    //nextTick{{{
-    /** Run a function when current execution flow is done. ie. setTimeout(fn, 0) or something faster with same semantics
-     * @param {function()} fn
-     * @return {undefined}
-     */
-    qp.nextTick = function(fn) {
-        if (qp.nodejs) {
-            process["nextTick"](fn);
-        } else {
-            setTimeout(fn, 0);
-        }
+    qp.flattenArray = function(arr) {
+        var acc = [];
+        var flatten = function(arr) {
+            if (Array.isArray(arr)) {
+                arr.forEach(flatten);
+            } else {
+                acc.push(arr);
+            }
+        };
+        flatten(arr);
+        return acc;
     }; //}}}
-    //notEmpty
-    /** Check if an object is an empty object
-     * @param {Object} obj
-     * @return {boolean}
+    //shuffleArray{{{
+    /** Put an array in random order (in-place)
+     * @param {Array} arr the array to shuffle
+     * @return {Array}
      */
-    qp.notEmptyObject = function(obj) { //{{{
-        return Object.keys(obj).length !== 0;
-    } //}}}
-    //urlUnescape{{{
-    /** Unescape %-encoding into string
-     * @param {string} str
-     * @return {string}
+    qp.shuffleArray = function(arr) {
+        var i = arr.length;
+        while (i) {
+            --i;
+            var r = Math.random() * arr.length | 0;
+            var t = arr[i];
+            arr[i] = arr[r];
+            arr[r] = t;
+        }
+        return arr;
+    }; //}}}
+    //arrayPickRandom{{{
+    /** Pick a random element from an array
+     * @param {Array} arr
      */
-    function urlUnescape(str) {
-        return str.replace(/\+/g, " ").replace(/%[0-9a-fA-F][0-9a-fA-F]/g, function(code) {
-            return String.fromCharCode(parseInt(code.slice(1), 16));
+    qp.arrayPickRandom = function(arr) {
+        return arr[Math.random() * arr.length | 0];
+    }; //}}}
+    //}}}
+    //{{{async
+    //asyncArrayForEach{{{
+    /** apply an asynchronous function to each array element
+     * @param {Array} array
+     * @param {function} fn
+     * @param {function} done
+     */
+    qp.asyncArrayForEach = function(arr, fn, done) {
+        var count = arr.length;
+        var cb = function() {
+            if (count === 0) {
+                done();
+            }--count;
+        };
+        cb();
+        arr.forEach(function(key) {
+            fn(key, cb);
         });
-    } //}}}
+    }; //}}}
+    //}}}
+    //{{{fn
+    // runonce {{{
+    /** enforce a function only runs once
+     * @param {function} fn
+     * @return {function} a new function with same type as the original function, but only executes the original function once, and otherwise just returns undefined
+     */
+    qp.fn.runonce = function(fn) {
+        var execute = true;
+        return function() {
+            if (execute) {
+                fn.apply(this, Array.prototype.slice.call(arguments, 0));
+                execute = false;
+            }
+        };
+    }; //}}}
     //throttledFn{{{
     /** make sure a given function is called not called to often
      * @param {function()} fn the function to be executed
      * @param {number=} delay how long (in ms.) should the shortest interval between function calls be. defaults 5000ms
      * @return {function(): undefined}
      */
-    qp.throttledFn = function(fn, delay) {
+    qp.fn.throttledFn = function(fn, delay) {
         delay = delay || 5000;
         var lastRun = 0;
         var scheduled = false;
@@ -169,24 +229,54 @@ var qp = {};
             setTimeout(run, Math.max(0, delay - (Date.now() - lastRun)));
         };
     }; //}}}
-    //asyncArrayForEach{{{
-    /** apply an asynchronous function to each array element
-     * @param {Array} array
-     * @param {function} fn
-     * @param {function} done
+    //nextTick{{{
+    /** Run a function when current execution flow is done. ie. setTimeout(fn, 0) or something faster with same semantics
+     * @param {function()} fn
+     * @return {undefined}
      */
-    qp.asyncArrayForEach = function(arr, fn, done) {
-        var count = arr.length;
-        var cb = function() {
-            if (count === 0) {
-                done();
-            }--count;
-        };
-        cb();
-        arr.forEach(function(key) {
-            fn(key, cb);
-        });
+    qp.fn.nextTick = function(fn) {
+        if (qp.nodejs) {
+            process["nextTick"](fn);
+        } else {
+            setTimeout(fn, 0);
+        }
     }; //}}}
+    //trycatch{{{
+    /** Functional exception handling
+     * @param {function} fn1 function to call
+     * @param {function} fn2 exception handling function, called if fn1 throw. The parameter will be execption thrown
+     * @return result from fn1 or fn2
+     */
+    qp.fn.trycatch = function(fn1, fn2) {
+        try {
+            return fn1();
+        } catch (e) {
+            return fn2(e);
+        }
+    }; //}}}
+    //}}}
+    //{{{str
+    //uniqId{{{
+    /** get an uniq id by concatenating a prefix to a sequential number
+     * @param {?string} prefix
+     * @return {string}
+     */
+    qp.uniqId = function(prefix) {
+        prefix = prefix || "_";
+        ++uniqIdCounter;
+        return prefix + String(uniqIdCounter);
+    };
+    var uniqIdCounter = 0; // }}}
+    //urlUnescape{{{
+    /** Unescape %-encoding into string
+     * @param {string} str
+     * @return {string}
+     */
+    function urlUnescape(str) {
+        return str.replace(/\+/g, " ").replace(/%[0-9a-fA-F][0-9a-fA-F]/g, function(code) {
+            return String.fromCharCode(parseInt(code.slice(1), 16));
+        });
+    } //}}}
     //name2url{{{
     /** generate a sensible url from a string, replace non-url chars with sensible strings or _
      * @param {string} name
@@ -213,91 +303,6 @@ var qp = {};
             }
         });
     }; //}}}
-    // TODO local storage {{{
-    if (qp.nodejs) {
-        (function() {
-            //TODO: change api
-            var db = qp.trycatch(function() {
-                return JSON.parse(require("fs")["readFileSync"](process["env"]["HOME"] + "/data/local.sqlite3"));
-            }, function() {
-                return {};
-            });
-            var syncLocalStorage = qp.throttledFn(function() {
-                require("fs")["writeFile"](process["env"]["HOME"] + "/data/local.sqlite3", JSON.stringify(db, null, "  "));
-            });
-            var lastSync = 0;
-            qp.local = {
-                set: function(key, val) {
-                    db[key] = val;
-                    syncLocalStorage();
-                },
-                get: function(key) {
-                    return db[key];
-                }
-            };
-        })();
-    } else if (typeof localStorage !== "undefined") {
-        qp.local = {
-            set: function(key, val) {
-                localStorage.setItem(key, val);
-            },
-            get: function(key) {
-                localStorage.getItem(key);
-            }
-        };
-    } //}}}
-    // runonce {{{
-    /** enforce a function only runs once
-     * @param {function} fn
-     * @return {function} a new function with same type as the original function, but only executes the original function once, and otherwise just returns undefined
-     */
-    qp.runonce = function(fn) {
-        var execute = true;
-        return function() {
-            if (execute) {
-                fn.apply(this, Array.prototype.slice.call(arguments, 0));
-                execute = false;
-            }
-        };
-    }; //}}}
-    // flatteArray {{{
-    /** collapse nested arrays into a single new array
-     * @param {Array} arr
-     * @return {Array}
-     */
-    qp.flattenArray = function(arr) {
-        var acc = [];
-        var flatten = function(arr) {
-            if (Array.isArray(arr)) {
-                arr.forEach(flatten);
-            } else {
-                acc.push(arr);
-            }
-        };
-        flatten(arr);
-        return acc;
-    }; //}}}
-    // valmap {{{
-    /** map a function across the values of an object, and return a new object with the resulting values
-     * @param {Object} obj
-     * @param {function} fn
-     * @return {Object}
-     */
-    qp.valmap = function(obj, fn) {
-        var result = {};
-        Object.keys(obj).forEach(function(key) {
-            result[key] = fn(obj[key]);
-        });
-        return result;
-    }; //}}}
-    // emptyObject {{{
-    /** Check if an object is an empty object
-     * @param {Object} obj
-     * @return {boolean}
-     */
-    qp.emptyObject = function(obj) {
-        return Object.keys(obj).length === 0;
-    }; //}}}
     // strStartsWith {{{
     /** check if a string has another string as a prefix
      * @param {string} str the string to check
@@ -307,22 +312,18 @@ var qp = {};
     qp.strStartsWith = function(str, prefix) {
         return str.slice(0, prefix.length) === prefix;
     }; //}}}
-    // objForEach {{{
-    /** call a function on each key/val
-     * @param {Object} obj
-     * @param {function(string,*)} fn
+    //}}}
+    //{{{sys
+    //exec{{{
+    /** Run a shell commend 
+     * @param {string} command
+     * @param {function} callback
      */
-    qp.objForEach = function(obj, fn) {
-        Object.keys(obj).forEach(function(key) {
-            fn(key, obj[key]);
-        });
-    }; //}}}
-    // mkdir,cp,mtime {{{
-    if (qp.nodejs) {
-        var fs = require("fs");
-        var dirs = {};
-    }
-
+    qp.exec = function(cmd, callback) {
+        require("child_process")["exec"](cmd, callback);
+    };
+    // }}}
+    //mkdir{{{
     /** Synchronously create a directory, possibly also create parent directory
      * @param {string} path
      */
@@ -338,7 +339,8 @@ var qp = {};
                 dirs[path] = true;
             }
         }
-    };
+    };//}}}
+    //cp{{{
     /** Copy a file
      * @param {string} src
      * @param {string} dst
@@ -348,43 +350,20 @@ var qp = {};
         if (qp.nodejs) {
             require("util").pump(fs["createReadStream"](src), fs["createWriteStream"](dst), callback);
         }
-    };
+    };//}}}
+    //mtime{{{
     /** synchronously get mtime of file
      * @param {string} filename
      */
     qp.mtime = function(filename) {
         if (qp.nodejs) {
-            return qp.trycatch(function() {
+            return qp.fn.trycatch(function() {
                 return fs["statSync"](filename).mtime.getTime();
             }, function() {
                 return 0;
             });
         }
-    };
-    //}}}
-    //shuffleArray{{{
-    /** Put an array in random order (in-place)
-     * @param {Array} arr the array to shuffle
-     * @return {Array}
-     */
-    qp.shuffleArray = function(arr) {
-        var i = arr.length;
-        while (i) {
-            --i;
-            var r = Math.random() * arr.length | 0;
-            var t = arr[i];
-            arr[i] = arr[r];
-            arr[r] = t;
-        }
-        return arr;
-    }; //}}}
-    //arrayPickRandom{{{
-    /** Pick a random element from an array
-     * @param {Array} arr
-     */
-    qp.arrayPickRandom = function(arr) {
-        return arr[Math.random() * arr.length | 0];
-    }; //}}}
+    };//}}}
     // saveJSON {{{
     /** save json to a file
      * @param {string} filename
@@ -411,11 +390,45 @@ var qp = {};
         var fn = typeof defaultVal === "function" ? defaultVal : function(err) {
                 return defaultVal;
             };
-        return qp.trycatch(function() {
+        return qp.fn.trycatch(function() {
             return JSON.parse(require("fs")["readFileSync"](filename, "utf8"));
         }, fn);
     } //}}}
-    // }}}
+    // TODO local storage {{{
+    if (qp.nodejs) {
+        (function() {
+            //TODO: change api
+            var db = qp.fn.trycatch(function() {
+                return JSON.parse(require("fs")["readFileSync"](process["env"]["HOME"] + "/data/local.sqlite3"));
+            }, function() {
+                return {};
+            });
+            var syncLocalStorage = qp.fn.throttledFn(function() {
+                require("fs")["writeFile"](process["env"]["HOME"] + "/data/local.sqlite3", JSON.stringify(db, null, "  "));
+            });
+            var lastSync = 0;
+            qp.local = {
+                set: function(key, val) {
+                    db[key] = val;
+                    syncLocalStorage();
+                },
+                get: function(key) {
+                    return db[key];
+                }
+            };
+        })();
+    } else if (typeof localStorage !== "undefined") {
+        qp.local = {
+            set: function(key, val) {
+                localStorage.setItem(key, val);
+            },
+            get: function(key) {
+                localStorage.getItem(key);
+            }
+        };
+    } //}}}
+    //}}}
+    //}}}
     // qp.V2d {{{
     /** simple 2d vector
      * @constructor 
@@ -429,26 +442,33 @@ var qp = {};
     qp.V2d.prototype.add = function(v) { //{{{
         return new qp.V2d(this.x + v.x, this.y + v.y);
     }; //}}}
+    /** subtract two vectors */
     qp.V2d.prototype.sub = function(v) { //{{{
         return new qp.V2d(this.x - v.x, this.y - v.y);
     }; //}}}
+    /** return this vector scaled by a constant */
     qp.V2d.prototype.scale = function(a) { //{{{
         return new qp.V2d(this.x * a, this.y * a);
     }; //}}}
+    /** the euclidian length of a vector */
     qp.V2d.prototype.length = function() { //{{{
         return Math.sqrt(this.x * this.x + this.y * this.y);
     }; //}}}
+    /** dot product of two vectors */
     qp.V2d.prototype.dot = function(v) { //{{{
         return this.x * v.x + this.y * v.y;
     }; //}}}
+    /** the vector normalised to length 1 */
     qp.V2d.prototype.norm = function() { //{{{
         var len = this.length();
         return this.scale(len ? 1 / len : 0);
     }; //}}}
+    /** distance between two vectors */
     qp.V2d.prototype.dist = function(v) { //{{{
         var d = this.sub(v);
         return Math.sqrt(d.dot(d));
     }; //}}}
+    /** vector in the opposite direction */
     qp.V2d.prototype.neg = function(v) { //{{{
         return new qp.V2d(-this.x, -this.y);
     }; //}}}
@@ -1139,7 +1159,7 @@ var qp = {};
         }
         go(platform, getAppName(), getPath());
     }
-    qp.nextTick(main); //}}}
+    qp.fn.nextTick(main); //}}}
     //}}}
     // css/dom-processing-monad{{{
     // DomProcess {{{
