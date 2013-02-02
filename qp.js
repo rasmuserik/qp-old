@@ -5,7 +5,13 @@
  * @namespace
  */
 var qp = {};
-qp.fn = {};
+qp.platform = {};
+/**@namespace*/ qp.fn = {};
+/**@namespace*/ qp.sys = {};
+/**@namespace*/ qp.set = {};
+/**@namespace*/ qp.str = {};
+/**@namespace*/ qp.obj = {};
+/**@namespace*/ qp.arr = {};
 (function() {
     "use strict";
     // setup {{{
@@ -15,25 +21,25 @@ qp.fn = {};
     //}}}
     // environment {{{
     /** @type {boolean} */
-    qp.nodejs = typeof PLATFORM_NODEJS !== "undefined" ? PLATFORM_NODEJS : typeof process !== "undefined";
+    qp.platform.nodejs = typeof PLATFORM_NODEJS !== "undefined" ? PLATFORM_NODEJS : typeof process !== "undefined";
     /** @type {boolean} */
-    qp.html5 = typeof PLATFORM_HTML5 !== "undefined" ? PLATFORM_HTML5 : !qp.nodejs;
+    qp.platform.html5 = typeof PLATFORM_HTML5 !== "undefined" ? PLATFORM_HTML5 : !qp.platform.nodejs;
     /** @type {string} */
     qp.host = "localhost";
     /** @type {number} */
     qp.port = 1234;
     // }}}
     //util{{{
-    if (qp.nodejs) {
+    if (qp.platform.nodejs) {
         var fs = require("fs");
         var dirs = {};
     }
     //{{{obj
-    //extend{{{
+    //{{{extend
     /** Copy elements from a list of objects onto target
      * @type {function(Object, ...Object): Object}
      */
-    qp.extend = function(target) {
+    qp.obj.extend = function(target) {
         for (var i = 1; i < arguments.length; ++i) {
             var obj = arguments[i];
             for (var key in obj) {
@@ -42,33 +48,33 @@ qp.fn = {};
         }
         return target;
     }; //}}}
-    // valmap {{{
+    //{{{map
     /** map a function across the values of an object, and return a new object with the resulting values
      * @param {Object} obj
      * @param {function} fn
      * @return {Object}
      */
-    qp.valmap = function(obj, fn) {
+    qp.obj.map = function(obj, fn) {
         var result = {};
         Object.keys(obj).forEach(function(key) {
             result[key] = fn(obj[key]);
         });
         return result;
     }; //}}}
-    //notEmpty{{{
+    //{{{notEmpty
     /** Check if an object is an empty object
      * @param {Object} obj
      * @return {boolean}
      */
-    qp.notEmptyObject = function(obj) { 
+    qp.obj.notEmptyObject = function(obj) { 
         return Object.keys(obj).length !== 0;
     } //}}}
-    // emptyObject {{{
+    //{{{empty
     /** Check if an object is an empty object
      * @param {Object} obj
      * @return {boolean}
      */
-    qp.emptyObject = function(obj) {
+    qp.obj.empty = function(obj) {
         return Object.keys(obj).length === 0;
     }; //}}}
     // objForEach {{{
@@ -76,7 +82,7 @@ qp.fn = {};
      * @param {Object} obj
      * @param {function(string,*)} fn
      */
-    qp.objForEach = function(obj, fn) {
+    qp.obj.forEach = function(obj, fn) {
         Object.keys(obj).forEach(function(key) {
             fn(key, obj[key]);
         });
@@ -89,13 +95,13 @@ qp.fn = {};
      * @param {String} indent string to use as indent (some spaces or tabs)
      * @return {String} text representation of indented list
      */
-    qp.listpp = function(list, indent) {
+    qp.arr.listpp = function(list, indent) {
         indent = indent || "  ";
         if (typeof list === "string") {
             return list;
         }
         var result = list.map(function(elem) {
-            return qp.listpp(elem, indent + "  ");
+            return qp.arr.listpp(elem, indent + "  ");
         });
         var len = 0;
         result.forEach(function(elem) {
@@ -107,25 +113,12 @@ qp.fn = {};
             return "[" + result.join("\n" + indent) + "]";
         }
     }; //}}}
-    //list2obj{{{
-    /** Convert a list into an object with list elements as keys, and true as value. Useful for set-like operations.
-     * @param {Array.<string>} arr 
-     * @param {Object.<string,boolean>}
-     */
-    qp.list2obj = function(arr) {
-        var i;
-        var result = {};
-        for (i = 0; i < arr.length; ++i) {
-            result[arr[i]] = true;
-        }
-        return result;
-    }; //}}}
-    // flatteArray {{{
+    //{{{flatten
     /** collapse nested arrays into a single new array
      * @param {Array} arr
      * @return {Array}
      */
-    qp.flattenArray = function(arr) {
+    qp.arr.flatten = function(arr) {
         var acc = [];
         var flatten = function(arr) {
             if (Array.isArray(arr)) {
@@ -137,12 +130,12 @@ qp.fn = {};
         flatten(arr);
         return acc;
     }; //}}}
-    //shuffleArray{{{
+    //shuffle{{{
     /** Put an array in random order (in-place)
      * @param {Array} arr the array to shuffle
      * @return {Array}
      */
-    qp.shuffleArray = function(arr) {
+    qp.arr.shuffle = function(arr) {
         var i = arr.length;
         while (i) {
             --i;
@@ -157,18 +150,16 @@ qp.fn = {};
     /** Pick a random element from an array
      * @param {Array} arr
      */
-    qp.arrayPickRandom = function(arr) {
+    qp.arr.pickRandom = function(arr) {
         return arr[Math.random() * arr.length | 0];
     }; //}}}
-    //}}}
-    //{{{async
     //asyncArrayForEach{{{
     /** apply an asynchronous function to each array element
      * @param {Array} array
      * @param {function} fn
      * @param {function} done
      */
-    qp.asyncArrayForEach = function(arr, fn, done) {
+    qp.arr.asyncForEach = function(arr, fn, done) {
         var count = arr.length;
         var cb = function() {
             if (count === 0) {
@@ -179,6 +170,21 @@ qp.fn = {};
         arr.forEach(function(key) {
             fn(key, cb);
         });
+    }; //}}}
+    //}}}
+    //{{{set
+    //fromArray{{{
+    /** Convert a list into an object with list elements as keys, and true as value. Useful for set-like operations.
+     * @param {Array.<string>} arr 
+     * @param {Object.<string,boolean>}
+     */
+    qp.set.fromArray= function(arr) {
+        var i;
+        var result = {};
+        for (i = 0; i < arr.length; ++i) {
+            result[arr[i]] = true;
+        }
+        return result;
     }; //}}}
     //}}}
     //{{{fn
@@ -235,7 +241,7 @@ qp.fn = {};
      * @return {undefined}
      */
     qp.fn.nextTick = function(fn) {
-        if (qp.nodejs) {
+        if (qp.platform.nodejs) {
             process["nextTick"](fn);
         } else {
             setTimeout(fn, 0);
@@ -261,7 +267,7 @@ qp.fn = {};
      * @param {?string} prefix
      * @return {string}
      */
-    qp.uniqId = function(prefix) {
+    qp.str.uniqId = function(prefix) {
         prefix = prefix || "_";
         ++uniqIdCounter;
         return prefix + String(uniqIdCounter);
@@ -272,7 +278,7 @@ qp.fn = {};
      * @param {string} str
      * @return {string}
      */
-    function urlUnescape(str) {
+    qp.str.urlUnescape = function(str) {
         return str.replace(/\+/g, " ").replace(/%[0-9a-fA-F][0-9a-fA-F]/g, function(code) {
             return String.fromCharCode(parseInt(code.slice(1), 16));
         });
@@ -282,7 +288,7 @@ qp.fn = {};
      * @param {string} name
      * @return {string}
      */
-    qp.name2url = function(name) {
+    qp.str.name2url = function(name) {
         return (String(name)).replace(new RegExp("[^a-zA-Z0-9_-]", "g"), function(c) {
             var subs = {
                 "Æ": "AE",
@@ -309,7 +315,7 @@ qp.fn = {};
      * @param {string} prefix the prefix
      * @return {boolean}
      */
-    qp.strStartsWith = function(str, prefix) {
+    qp.str.startsWith = function(str, prefix) {
         return str.slice(0, prefix.length) === prefix;
     }; //}}}
     //}}}
@@ -319,7 +325,7 @@ qp.fn = {};
      * @param {string} command
      * @param {function} callback
      */
-    qp.exec = function(cmd, callback) {
+    qp.sys.exec = function(cmd, callback) {
         require("child_process")["exec"](cmd, callback);
     };
     // }}}
@@ -327,14 +333,14 @@ qp.fn = {};
     /** Synchronously create a directory, possibly also create parent directory
      * @param {string} path
      */
-    qp.mkdir = function(path) {
-        if (qp.nodejs) {
+    qp.sys.mkdir = function(path) {
+        if (qp.platform.nodejs) {
             if (!dirs[path] && !fs["existsSync"](path)) {
                 path = path.split("/");
                 while (!path[path.length - 1]) {
                     path.pop();
                 }
-                qp.mkdir(path.slice(0, -1).join("/"));
+                qp.sys.mkdir(path.slice(0, -1).join("/"));
                 fs["mkdirSync"](path.join("/"));
                 dirs[path] = true;
             }
@@ -346,8 +352,8 @@ qp.fn = {};
      * @param {string} dst
      * @param {function} callback
      */
-    qp.cp = function(src, dst, callback) {
-        if (qp.nodejs) {
+    qp.sys.cp = function(src, dst, callback) {
+        if (qp.platform.nodejs) {
             require("util").pump(fs["createReadStream"](src), fs["createWriteStream"](dst), callback);
         }
     };//}}}
@@ -355,8 +361,8 @@ qp.fn = {};
     /** synchronously get mtime of file
      * @param {string} filename
      */
-    qp.mtime = function(filename) {
-        if (qp.nodejs) {
+    qp.sys.mtime = function(filename) {
+        if (qp.platform.nodejs) {
             return qp.fn.trycatch(function() {
                 return fs["statSync"](filename).mtime.getTime();
             }, function() {
@@ -370,7 +376,7 @@ qp.fn = {};
      * @param {*} content must be json-able
      * @param {function} callback
      */
-    qp.saveJSON = function(filename, content, callback) {
+    qp.sys.saveJSON = function(filename, content, callback) {
         require("fs")["writeFile"](filename, JSON.stringify(content), callback);
     };
     //}}}
@@ -379,7 +385,7 @@ qp.fn = {};
      * @param {string} filename
      * @param {*} defaultVal default value, or a function that yields the default value. This will be returned/called if the file cannot be loaded/parsed to json
      */
-    qp.loadJSONSync = function(filename, defaultVal) {
+    qp.sys.loadJSONSync = function(filename, defaultVal) {
         if (!defaultVal) {
             defaultVal = function(e) {
                 return {
@@ -395,7 +401,7 @@ qp.fn = {};
         }, fn);
     } //}}}
     // TODO local storage {{{
-    if (qp.nodejs) {
+    if (qp.platform.nodejs) {
         (function() {
             //TODO: change api
             var db = qp.fn.trycatch(function() {
@@ -612,11 +618,11 @@ qp.fn = {};
     }; //}}}
     */
     qp.graphUpdateParents = function(graph) { //{{{
-        qp.objForEach(graph, function(_, node) {
+        qp.obj.forEach(graph, function(_, node) {
             node.parents = {};
         });
-        qp.objForEach(graph, function(nodeId, node) {
-            qp.objForEach(node.children, function(key, _) {
+        qp.obj.forEach(graph, function(nodeId, node) {
+            qp.obj.forEach(node.children, function(key, _) {
                 graph[key].parents[nodeId] = true;
             });
         });
@@ -628,7 +634,7 @@ qp.fn = {};
         var prevLength = -1;
         while (result.length !== prevLength) {
             prevLength = result.length;
-            qp.objForEach(graph, visitEachNode);
+            qp.obj.forEach(graph, visitEachNode);
         }
 
         function visitEachNode(nodeId, node) {
@@ -667,7 +673,7 @@ qp.fn = {};
         qp.addEdge(g, "a", "c");
         test.assertEqual(JSON.stringify(qp.traverseDAG(g)), "[\"a\",\"b\",\"c\"]");
         qp.graphUpdateParents(g);
-        test.assert(qp.emptyObject(g.a.parents), "a has no parents");
+        test.assert(qp.obj.empty(g.a.parents), "a has no parents");
         test.assert(g.c.parents.a, "c has parent a");
         test.done();
     }; //}}}
@@ -966,7 +972,7 @@ qp.fn = {};
     function testClient(test) { //{{{
         test.done();
     }
-    if (qp.html5) {
+    if (qp.platform.html5) {
         window["testClient"] = testClient;
     }
     //}}}
@@ -992,13 +998,13 @@ qp.fn = {};
     // }}}
     // Testrunner {{{
     qp.test = function(test) {
-        if (qp.nodejs) {
+        if (qp.platform.nodejs) {
             var jsontest = test.create("load/save-JSON");
-            var result = qp.loadJSONSync("/does/not/exists", 1);
+            var result = qp.sys.loadJSONSync("/does/not/exists", 1);
             jsontest.assertEqual(result, 1);
-            qp.saveJSON("/tmp/exports-save-json-testb", 2);
-            qp.saveJSON("/tmp/exports-save-json-test", 2, function() {
-                result = qp.loadJSONSync("/tmp/exports-save-json-test", 1);
+            qp.sys.saveJSON("/tmp/exports-save-json-testb", 2);
+            qp.sys.saveJSON("/tmp/exports-save-json-test", 2, function() {
+                result = qp.sys.loadJSONSync("/tmp/exports-save-json-test", 1);
                 jsontest.assertEqual(result, 2);
                 jsontest.done();
             });
@@ -1008,15 +1014,15 @@ qp.fn = {};
             a: 1,
             b: 2
         };
-        qp.objForEach(obj, function(key, val) {
+        qp.obj.forEach(obj, function(key, val) {
             test.assert(key && obj[key] === val, "objforeach");
             ++count;
         });
         test.assertEqual(count, 2, "objforeach count");
-        test.assert(qp.strStartsWith("foobarbaz", "foobar"), "strstartswith1");
-        test.assert(!qp.strStartsWith("qoobarbaz", "foobar"), "strstartswith2");
-        test.assert(qp.strStartsWith("foobarbaz", ""), "strstartswith3");
-        test.assert(!qp.strStartsWith("foo", "foobar"), "strstartswith4");
+        test.assert(qp.str.startsWith("foobarbaz", "foobar"), "strstartswith1");
+        test.assert(!qp.str.startsWith("qoobarbaz", "foobar"), "strstartswith2");
+        test.assert(qp.str.startsWith("foobarbaz", ""), "strstartswith3");
+        test.assert(!qp.str.startsWith("foo", "foobar"), "strstartswith4");
         test.done();
     };
     // }}}
@@ -1044,16 +1050,57 @@ qp.fn = {};
         }
     };
     // }}}
+//{{{App
+    /**@constructor*/
+    qp.App = function(obj) {
+        if(qp.platform.nodejs) this.commands = {};
+        if(qp.platform.httpd) this.httpds = {};
+        if(qp.platform.html5) this.html5s = {};
+        qp.obj.extend(this, obj);
+    }
+    qp.App.prototype.go = function(path) {
+        var fn = this.routes[path] || this.routes[undefined] || routeNotFound;
+        var self = this;
+        function routeNotFound(client) {
+            var text = "Route not found: " + client.path + "\n";
+            text += "Available routes:\n  ";
+            text += Object.keys(self.routes).join("\n  ");
+            client.text(text).end();
+        }
+    }
+    /** @param {string} path @param {function} fn @return {qp.App} */
+    qp.App.prototype.any = function(path, fn) {
+        this.command(path, fn);
+        this.http(path, fn);
+        this.html5(path, fn);
+        return this;
+    }
+    /** @param {string} path @param {function} fn @return {qp.App} */
+    qp.App.prototype.command = function(path, fn) {
+        if(qp.platform.nodejs) this.commands[path] = fn;
+        return this;
+    }
+    /** @param {string} path @param {function} fn @return {qp.App} */
+    qp.App.prototype.httpd = function(path, fn) {
+        if(qp.platform.httpd) this.httpds[path] = fn;
+        return this;
+    }
+    /** @param {string} path @param {function} fn @return {qp.App} */
+    qp.App.prototype.html5 = function(path, fn) {
+        if(qp.platform.html5) this.html5s[path] = fn;
+        return this;
+    }
+//}}}
     // app router {{{
     // route object {{{
     var apps = {
         "undefined": {}
     };
-    if (qp.nodejs) {
+    if (qp.platform.nodejs) {
         apps["command"] = {};
         apps["http"] = {};
     }
-    if (qp.html5) {
+    if (qp.platform.html5) {
         apps["html5"] = {};
     }
     //}}}
@@ -1117,21 +1164,21 @@ qp.fn = {};
     qp.scope = function(scopeObj) { //{{{
         var scope = {
             register: function(childObj) {
-                qp.register(qp.extend({}, scopeObj, childObj));
+                qp.register(qp.obj.extend({}, scopeObj, childObj));
                 return scope;
             }
         };
         return scope;
     }; //}}}
     var getPath, getAppName; //{{{
-    if (qp.nodejs) {
+    if (qp.platform.nodejs) {
         getAppName = function() {
             return process["argv"][2];
         };
         getPath = function() {
             return process["argv"][3];
         };
-    } else if (qp.html5) {
+    } else if (qp.platform.html5) {
         getAppName = function() {
             return window["qpApp"] || location.host.split(".")[0];
         };
@@ -1152,9 +1199,9 @@ qp.fn = {};
     } //}}}
     function main() { //{{{
         var platform;
-        if (qp.nodejs) {
+        if (qp.platform.nodejs) {
             platform = "command";
-        } else if (qp.html5) {
+        } else if (qp.platform.html5) {
             platform = "html5";
         }
         go(platform, getAppName(), getPath());
@@ -1227,7 +1274,7 @@ qp.fn = {};
     // builtin routes {{{
     if (typeof BUILTIN_ROUTES !== "undefined" ? BUILTIN_ROUTES : true) {
         // dev-server {{{
-        if (qp.nodejs) {
+        if (qp.platform.nodejs) {
             var startDevServer = function(client) {
                 var devServer = function(req, res) {
                     var name = client.path;
@@ -1250,7 +1297,7 @@ qp.fn = {};
             });
         } //}}}
         // build {{{
-        if (qp.nodejs) {
+        if (qp.platform.nodejs) {
             var concatSource = function(callback) {
                 var fs = require("fs");
                 var appSource, qpSource;
@@ -1270,7 +1317,7 @@ qp.fn = {};
                 function fileLoaded() {
                     if (!qpSource || !appSource) return;
                     var dir = process["cwd"]() + "/build";
-                    qp.mkdir(dir);
+                    qp.sys.mkdir(dir);
                     var outputFileName = dir + "/node.js";
                     var closure = require("closure-compiler");
                     console.log("running closure compiler");
@@ -1296,7 +1343,7 @@ qp.fn = {};
             };
             var buildApp = function(client) {
                 concatSource(function() {});
-                qp.exec("./node_modules/jsdoc/jsdoc -d doc qp.js", function(err) {
+                qp.sys.exec("./node_modules/jsdoc/jsdoc -d doc qp.js", function(err) {
                     if (err) throw err;
                 });
             };

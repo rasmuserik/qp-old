@@ -28,3 +28,7 @@ qp.scope({
     path: "app",
     fn: defaultFn
 });
+
+new qp.App({
+    name: "qp-main"
+}).any("hello", defaultFn);
