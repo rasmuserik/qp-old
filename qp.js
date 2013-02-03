@@ -1,5 +1,5 @@
 /*jshint sub:true*/
-/*global BUILTIN_ROUTES PLATFORM_NODEJS PLATFORM_HTML5 process setTimeout location require console window localStorage document module __dirname __filename*/
+/*global global BUILTIN_ROUTES PLATFORM_NODEJS PLATFORM_HTML5 process setTimeout location require console window localStorage document module __dirname __filename*/
 /**
  * The qp module is a collection of utilities.
  * @namespace
@@ -22,11 +22,11 @@ qp.arr = {};
 qp.route = {};
 /**@namespace*/
 qp.dev = {};
+if(typeof global === undefined) {
+    global = this;
+}
 (function() {
     "use strict";
-    // setup {{{
-    if (typeof module !== "undefined") module["exports"] = qp;
-    //}}}
     // environment {{{
     /** @type {boolean} */
     qp.platform.nodejs = typeof PLATFORM_NODEJS !== "undefined" ? PLATFORM_NODEJS : typeof process !== "undefined";
@@ -1243,7 +1243,7 @@ qp.dev = {};
                     source += "/**@const*/var PLATFORM_NODEJS = true;";
                     source += "/**@const*/var PLATFORM_HTML5 = false;";
                     source += "/**@const*/var qpconfig = {bnodejs:true};";
-                    source += qpSource.replace("if (typeof module !== \"undefined\") module[\"exports\"] = qp;", "");
+                    source += qpSource.replace("global[\"qp\"] = qp;", "");
                     source += appSource.replace(/qp\s*=\s*require\s*\(\s*['"](\.\/)?qp['"]\s*\)/g, "");
                     closure["compile"](source, {
                         "use_types_for_optimization": "--use_types_for_optimization",
@@ -1271,6 +1271,7 @@ qp.dev = {};
         // }}}
     }
     // }}}
+    //}}}
     //{{{dev
     qp.dev.typecheck = function(fname) {
         qp.sys.exec("java -jar ./node_modules/closure-compiler/lib/vendor/compiler.jar --summary_detail_level 3 --warning_level VERBOSE --jscomp_off=checkVars --js_output_file /dev/zero qp.js", function(err, stdout, stderr) {
@@ -1278,6 +1279,18 @@ qp.dev = {};
             console.log(stderr, stdout);
         });
     };
+    //}}}
+    // setup {{{
+    function moduleFn(global) {
+        global["qp"] = qp;
+    }
+    if (typeof require === "undefined") {
+        var modules = {qp: moduleFn, "./qp": moduleFn};
+        global.require = function(name) {
+            return modules[name];
+        }
+    }
+    if (typeof module !== "undefined") module["exports"] = moduleFn;
     //}}}
     // file end {{{
 })();

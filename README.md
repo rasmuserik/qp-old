@@ -16,10 +16,7 @@ Becoming closure-advanced-optimizable
       "dependencies": {"qp":"git://github.com/rasmuserik/qp.git#master"}
     }
     $ cat > app.js
-    if(typeof qp === "undefined") { qp = require("qp"); }
-    qp.register({fn: function(client) {
-        client.text("hello from app").end();
-    }});
+    require("qp")(global);
     $ npm install
     [...]
     $ node app.js
