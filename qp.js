@@ -20,6 +20,8 @@ qp.obj = {};
 qp.arr = {};
 /**@namespace*/
 qp.route = {};
+/**@namespace*/
+qp.dev = {};
 (function() {
     "use strict";
     // setup {{{
@@ -40,12 +42,11 @@ qp.route = {};
     //util{{{
     if (qp.platform.nodejs) {
         var fs = require("fs");
-        var dirs = {};
     }
     //{{{obj
     //{{{extend
     /** Copy elements from a list of objects onto target
-     * @type {function(Object, ...Object): Object}
+     * @type {function(Object, ...[Object]): Object}
      */
     qp.obj.extend = function(target) {
         for (var i = 1; i < arguments.length; ++i) {
@@ -58,8 +59,8 @@ qp.route = {};
     }; //}}}
     //{{{map
     /** map a function across the values of an object, and return a new object with the resulting values
-     * @param {Object} obj
-     * @param {function} fn
+     * @param {!Object} obj
+     * @param {function(*)} fn
      * @return {Object}
      */
     qp.obj.map = function(obj, fn) {
@@ -71,7 +72,7 @@ qp.route = {};
     }; //}}}
     //{{{notEmpty
     /** Check if an object is an empty object
-     * @param {Object} obj
+     * @param {!Object} obj
      * @return {boolean}
      */
     qp.obj.notEmptyObject = function(obj) {
@@ -79,7 +80,7 @@ qp.route = {};
     }; //}}}
     //{{{empty
     /** Check if an object is an empty object
-     * @param {Object} obj
+     * @param {!Object} obj
      * @return {boolean}
      */
     qp.obj.empty = function(obj) {
@@ -87,7 +88,7 @@ qp.route = {};
     }; //}}}
     // objForEach {{{
     /** call a function on each key/val
-     * @param {Object} obj
+     * @param {!Object} obj
      * @param {function(string,*)} fn
      */
     qp.obj.forEach = function(obj, fn) {
@@ -99,9 +100,9 @@ qp.route = {};
     //{{{arr
     //listpp{{{
     /** Prettyprint a list
-     * @param {Array} list list to prettyprint
-     * @param {String} indent string to use as indent (some spaces or tabs)
-     * @return {String} text representation of indented list
+     * @param {Array|string} list list to prettyprint
+     * @param {string=} indent string to use as indent (some spaces or tabs)
+     * @return {string} text representation of indented list
      */
     qp.arr.listpp = function(list, indent) {
         indent = indent || "  ";
@@ -163,9 +164,9 @@ qp.route = {};
     }; //}}}
     //asyncArrayForEach{{{
     /** apply an asynchronous function to each array element
-     * @param {Array} array
-     * @param {function} fn
-     * @param {function} done
+     * @param {Array} arr
+     * @param {function(*, function(...[*]))} fn
+     * @param {function(...[*])} done
      */
     qp.arr.asyncForEach = function(arr, fn, done) {
         var count = arr.length;
@@ -184,7 +185,7 @@ qp.route = {};
     //fromArray{{{
     /** Convert a list into an object with list elements as keys, and true as value. Useful for set-like operations.
      * @param {Array.<string>} arr 
-     * @param {Object.<string,boolean>}
+     * @return {Object.<string,boolean>}
      */
     qp.set.fromArray = function(arr) {
         var i;
@@ -204,8 +205,8 @@ qp.route = {};
     //}}}
     // runonce {{{
     /** enforce a function only runs once
-     * @param {function} fn
-     * @return {function} a new function with same type as the original function, but only executes the original function once, and otherwise just returns undefined
+     * @param {function(...[*])} fn
+     * @return {function(...[*])} a new function with same type as the original function, but only executes the original function once, and otherwise just returns undefined
      */
     qp.fn.runonce = function(fn) {
         var execute = true;
@@ -220,14 +221,18 @@ qp.route = {};
     /** make sure a given function is called not called to often
      * @param {function()} fn the function to be executed
      * @param {number=} delay how long (in ms.) should the shortest interval between function calls be. defaults 5000ms
-     * @return {function(): undefined}
+     * @return {function(function()=): undefined}
      */
     qp.fn.throttledFn = function(fn, delay) {
         delay = delay || 5000;
         var lastRun = 0;
         var scheduled = false;
         var callbacks = [];
-        return function(callback) {
+        /** 
+         * @param {function()=} callback
+         * @return {undefined}
+         */
+        function newFn(callback) {
             if (callback) {
                 callbacks.push(callback);
             }
@@ -239,15 +244,16 @@ qp.route = {};
                 scheduled = false;
                 callbacks = [];
                 lastRun = Date.now();
-                fn.call(self, function() {
+                fn.apply(self, [function() {
                     callbacks.forEach(function(f) {
                         f();
                     });
-                });
+                }]);
             };
             scheduled = true;
             setTimeout(run, Math.max(0, delay - (Date.now() - lastRun)));
         };
+        return newFn;
     }; //}}}
     //nextTick{{{
     /** Run a function when current execution flow is done. ie. setTimeout(fn, 0) or something faster with same semantics
@@ -263,8 +269,8 @@ qp.route = {};
     }; //}}}
     //trycatch{{{
     /** Functional exception handling
-     * @param {function} fn1 function to call
-     * @param {function} fn2 exception handling function, called if fn1 throw. The parameter will be execption thrown
+     * @param {function()} fn1 function to call
+     * @param {function(*)} fn2 exception handling function, called if fn1 throw. The parameter will be execption thrown
      * @return result from fn1 or fn2
      */
     qp.fn.trycatch = function(fn1, fn2) {
@@ -278,7 +284,7 @@ qp.route = {};
     //{{{str
     //uniqId{{{
     /** get an uniq id by concatenating a prefix to a sequential number
-     * @param {?string} prefix
+     * @param {string=} prefix
      * @return {string}
      */
     qp.str.uniqId = function(prefix) {
@@ -336,8 +342,8 @@ qp.route = {};
     //{{{sys
     //exec{{{
     /** Run a shell commend 
-     * @param {string} command
-     * @param {function} callback
+     * @param {string} cmd
+     * @param {function(...[*])} callback
      */
     qp.sys.exec = function(cmd, callback) {
         require("child_process")["exec"](cmd, callback);
@@ -349,14 +355,13 @@ qp.route = {};
      */
     qp.sys.mkdir = function(path) {
         if (qp.platform.nodejs) {
-            if (!dirs[path] && !fs["existsSync"](path)) {
-                path = path.split("/");
-                while (!path[path.length - 1]) {
-                    path.pop();
+            if (!fs["existsSync"](path)) {
+                splitpath = path.split("/");
+                while (!spiltpath[spiltpath.length - 1]) {
+                    spiltpath.pop();
                 }
-                qp.sys.mkdir(path.slice(0, -1).join("/"));
-                fs["mkdirSync"](path.join("/"));
-                dirs[path] = true;
+                qp.sys.mkdir(spiltpath.slice(0, -1).join("/"));
+                fs["mkdirSync"](spiltpath.join("/"));
             }
         }
     }; //}}}
@@ -364,11 +369,11 @@ qp.route = {};
     /** Copy a file
      * @param {string} src
      * @param {string} dst
-     * @param {function} callback
+     * @param {function(...[*])} callback
      */
     qp.sys.cp = function(src, dst, callback) {
         if (qp.platform.nodejs) {
-            require("util").pump(fs["createReadStream"](src), fs["createWriteStream"](dst), callback);
+            require("util")["pump"](fs["createReadStream"](src), fs["createWriteStream"](dst), callback);
         }
     }; //}}}
     //mtime{{{
@@ -388,7 +393,7 @@ qp.route = {};
     /** save json to a file
      * @param {string} filename
      * @param {*} content must be json-able
-     * @param {function} callback
+     * @param {function(*)=} callback
      */
     qp.sys.saveJSON = function(filename, content, callback) {
         require("fs")["writeFile"](filename, JSON.stringify(content), callback);
@@ -687,8 +692,8 @@ qp.route = {};
         qp.addEdge(g, "a", "c");
         test.assertEqual(JSON.stringify(qp.traverseDAG(g)), "[\"a\",\"b\",\"c\"]");
         qp.graphUpdateParents(g);
-        test.assert(qp.obj.empty(g.a.parents), "a has no parents");
-        test.assert(g.c.parents.a, "c has parent a");
+        test.assert(qp.obj.empty(g["a"].parents), "a has no parents");
+        test.assert(g["c"].parents["a"], "c has parent a");
         test.done();
     }; //}}}
     // }}}
@@ -899,7 +904,7 @@ qp.route = {};
             }
             return elem;
         } else if (typeof jml === "string" || typeof jml === "number") {
-            return document.createTextNode(jml);
+            return document.createTextNode(String(jml));
         } else {
             return jml;
         }
@@ -942,6 +947,7 @@ qp.route = {};
     //}}}
     // test {{{
     // TestSuite class {{{
+    /** @constructor */
     function TestSuite(name, doneFn) { //{{{
         this.name = name;
         this.suites = 1;
@@ -960,12 +966,18 @@ qp.route = {};
             console.log("Assert in " + this.name + ": " + desc);
         }
     }; //}}}
+    TestSuite.prototype.assertEqual = function(expr1, expr2, desc) { //{{{
+        if (expr1 !== expr2) {
+            ++this.errCount;
+            console.log("Assert in " + this.name + ": " + desc);
+        }
+    }; //}}}
     TestSuite.prototype.done = function() { //{{{
         this.suites -= 1;
         this._cleanup();
     }; //}}}
     TestSuite.prototype.suite = function(name) { //{{{
-        var result = new TestSuite(this.name + "#" + name);
+        var result = new TestSuite(this.name + "#" + name, this.doneFn);
         result.parent = this;
         this.suites += 1;
         return result;
@@ -999,11 +1011,11 @@ qp.route = {};
         // start the client-test via zombie
         var clientSuite = test.suite("client");
         var browser = new Browser();
-        browser.visit("http://" + qp.host + ":" + qp.port, {
+        browser["visit"]("http://" + qp.host + ":" + qp.port, {
             debug: true
-        }).then(function() {
+        })["then"](function() {
             browser["window"]["testClient"](clientSuite);
-        }).fail(function() {
+        })["fail"](function() {
             clientSuite.fail("could not start client-test");
             test.done();
         });
@@ -1041,10 +1053,10 @@ qp.route = {};
     };
     // }}}
     // qp.Client {{{
-    qp.Client = function(opt) {
-        for (var key in opt) {
-            this[key] = opt[key];
-        }
+    /** @constructor */
+    qp.Client = function(path, opt) {
+        this.path = path
+        this.opt = opt || {};
     };
     qp.Client.prototype.text = function(str) {
         var prev = this.resultText || "";
@@ -1053,12 +1065,12 @@ qp.route = {};
     };
     qp.Client.prototype.end = function() {
         console.log(this);
-        if (this.platform === "http") {
-            this.res.end(this.resultText);
+        if (this.opt.platform === "http") {
+            this.opt.res.end(this.resultText);
         } else if (qp.platform.nodejs) {
             console.log(this.resultText);
         } else {
-            throw "unimplemented platform: " + this.platform;
+            throw "unimplemented platform";
         }
     };
     // }}}
@@ -1109,13 +1121,14 @@ qp.route = {};
     function main() {
         var route = qp.route.systemCurrent();
         var fn = qp.route.lookup(route.path);
-        var client = new qp.Client(route);
+        var client = new qp.Client(route.path, route);
         fn(client);
     }
     qp.fn.nextTick(main);
     //}}}
     // css/dom-processing-monad{{{
     // DomProcess {{{
+    /**@constructor*/
     function DomProcess() { //{{{
         this.apply = function(dom) {
             return this;
@@ -1124,7 +1137,7 @@ qp.route = {};
     DomProcess.prototype.bind = function(f) { //{{{
         var apply = this.apply;
         this.apply = function(dom) {
-            apply(dom);
+            apply.apply(this, [dom]);
             f(dom);
             return this;
         };
@@ -1185,8 +1198,7 @@ qp.route = {};
                 var devServer = function(req, res) {
                     var path = req.url.slice(1).split(/[.?]/)[0];
                     var fn = qp.route.lookup(path);
-                    var client = new qp.Client({
-                        path: path,
+                    var client = new qp.Client(path, {
                         platform: "http",
                         req: req,
                         res: res
@@ -1237,9 +1249,12 @@ qp.route = {};
                     source += appSource.replace(/qp\s*=\s*require\s*\(\s*['"](\.\/)?qp['"]\s*\)/g, "");
                     closure["compile"](source, {
                         "use_types_for_optimization": "--use_types_for_optimization",
+                        "summary_detail_level": "3",
+                        "warning_level": "VERBOSE",
+                        "jscomp_off": "checkVars",
                         //"formatting": "PRETTY_PRINT",
                         "compilation_level": "ADVANCED_OPTIMIZATIONS"
-                    }, function(err, result) {
+                    }, function(err, result, stderr) {
                         if (err) throw err;
                         console.log("writing", outputFileName);
                         fs["writeFile"](outputFileName, result);
@@ -1257,6 +1272,14 @@ qp.route = {};
         // }}}
     }
     // }}}
+    //{{{dev
+    qp.dev.typecheck = function(fname) {
+        qp.sys.exec("java -jar ./node_modules/closure-compiler/lib/vendor/compiler.jar --summary_detail_level 3 --warning_level VERBOSE --jscomp_off=checkVars --js_output_file /dev/zero qp.js", function(err, stdout, stderr) {
+            if(err) throw err;
+            console.log(stderr, stdout);
+        });
+    };
+    //}}}
     // file end {{{
 })();
 // }}}
