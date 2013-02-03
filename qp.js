@@ -25,9 +25,7 @@ qp.dev = {};
 (function() {
     "use strict";
     // setup {{{
-    if (typeof module !== "undefined") {
-        module["exports"] = qp;
-    }
+    if (typeof module !== "undefined") module["exports"] = qp;
     //}}}
     // environment {{{
     /** @type {boolean} */
@@ -1245,7 +1243,7 @@ qp.dev = {};
                     source += "/**@const*/var PLATFORM_NODEJS = true;";
                     source += "/**@const*/var PLATFORM_HTML5 = false;";
                     source += "/**@const*/var qpconfig = {bnodejs:true};";
-                    source += qpSource.replace("module[\"exports\"] = qp;", "");
+                    source += qpSource.replace("if (typeof module !== \"undefined\") module[\"exports\"] = qp;", "");
                     source += appSource.replace(/qp\s*=\s*require\s*\(\s*['"](\.\/)?qp['"]\s*\)/g, "");
                     closure["compile"](source, {
                         "use_types_for_optimization": "--use_types_for_optimization",
@@ -1276,7 +1274,7 @@ qp.dev = {};
     //{{{dev
     qp.dev.typecheck = function(fname) {
         qp.sys.exec("java -jar ./node_modules/closure-compiler/lib/vendor/compiler.jar --summary_detail_level 3 --warning_level VERBOSE --jscomp_off=checkVars --js_output_file /dev/zero qp.js", function(err, stdout, stderr) {
-            if(err) throw err;
+            if (err) throw err;
             console.log(stderr, stdout);
         });
     };

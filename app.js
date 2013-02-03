@@ -1,4 +1,6 @@
-if (typeof qp === "undefined") qp = require("./qp");
+if (typeof qp === "undefined") {
+    qp = require("./qp");
+}
 
 function defaultFn(client) {
     client.text("Hello from app");
@@ -16,5 +18,5 @@ function defaultFn(client) {
 qp.route.add("hello", defaultFn);
 qp.route.add("typecheck", function(client) {
     qp.dev.typecheck();
-    qp.end;
+    client.end();
 });
