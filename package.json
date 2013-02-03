@@ -14,7 +14,8 @@
     }],
     "dependencies": {
         "socket.io": "*",
-        "closure-compiler": "*",
+        "closure": "*",
+        "closure-compiler": "git://github.com/rasmuserik/node-closure.git#master",
         "jsdoc3": "git://github.com/jsdoc3/jsdoc.git#master"
     },
     "engines": {

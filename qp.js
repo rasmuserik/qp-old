@@ -1256,6 +1256,7 @@ qp.dev = {};
                         "compilation_level": "ADVANCED_OPTIMIZATIONS"
                     }, function(err, result, stderr) {
                         if (err) throw err;
+                        console.log(stderr);
                         console.log("writing", outputFileName);
                         fs["writeFile"](outputFileName, result);
                     });
