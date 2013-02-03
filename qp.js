@@ -1069,10 +1069,12 @@ qp.route = {};
         }
     };
     //{{{route
+    /** add a new route @param {string} path path for the route @param {function(qp.Client)} fn */
     qp.route.add = function(path, fn) {
         routes[path.toLowerCase()] = fn;
     }; //}}}
     //{{{lookupRoute
+    /** given a path, return the corresponding handling function @param {string} path */
     qp.route.lookup = function(path) {
         path = path.toLowerCase();
         while (true) {
@@ -1088,6 +1090,7 @@ qp.route = {};
         }
     }; //}}}
     //{{{parseSystemRoute
+    /** get the current path/arguments/... @return {Object} */
     qp.route.systemCurrent = function() {
         if (qp.platform.nodejs) {
             return {
