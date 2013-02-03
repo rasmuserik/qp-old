@@ -6,13 +6,20 @@
  */
 var qp = {};
 qp.platform = {};
-/**@namespace*/ qp.fn = {};
-/**@namespace*/ qp.sys = {};
-/**@namespace*/ qp.set = {};
-/**@namespace*/ qp.str = {};
-/**@namespace*/ qp.obj = {};
-/**@namespace*/ qp.arr = {};
-/**@namespace*/ qp.route = {};
+/**@namespace*/
+qp.fn = {};
+/**@namespace*/
+qp.sys = {};
+/**@namespace*/
+qp.set = {};
+/**@namespace*/
+qp.str = {};
+/**@namespace*/
+qp.obj = {};
+/**@namespace*/
+qp.arr = {};
+/**@namespace*/
+qp.route = {};
 (function() {
     "use strict";
     // setup {{{
@@ -67,7 +74,7 @@ qp.platform = {};
      * @param {Object} obj
      * @return {boolean}
      */
-    qp.obj.notEmptyObject = function(obj) { 
+    qp.obj.notEmptyObject = function(obj) {
         return Object.keys(obj).length !== 0;
     } //}}}
     //{{{empty
@@ -179,7 +186,7 @@ qp.platform = {};
      * @param {Array.<string>} arr 
      * @param {Object.<string,boolean>}
      */
-    qp.set.fromArray= function(arr) {
+    qp.set.fromArray = function(arr) {
         var i;
         var result = {};
         for (i = 0; i < arr.length; ++i) {
@@ -191,7 +198,9 @@ qp.platform = {};
     //{{{fn
     //{{{id
     /** Identity function */
-    qp.fn.id = function(x) { return x; };
+    qp.fn.id = function(x) {
+        return x;
+    };
     //}}}
     // runonce {{{
     /** enforce a function only runs once
@@ -350,7 +359,7 @@ qp.platform = {};
                 dirs[path] = true;
             }
         }
-    };//}}}
+    }; //}}}
     //cp{{{
     /** Copy a file
      * @param {string} src
@@ -361,7 +370,7 @@ qp.platform = {};
         if (qp.platform.nodejs) {
             require("util").pump(fs["createReadStream"](src), fs["createWriteStream"](dst), callback);
         }
-    };//}}}
+    }; //}}}
     //mtime{{{
     /** synchronously get mtime of file
      * @param {string} filename
@@ -374,7 +383,7 @@ qp.platform = {};
                 return 0;
             });
         }
-    };//}}}
+    }; //}}}
     // saveJSON {{{
     /** save json to a file
      * @param {string} filename
@@ -1046,7 +1055,7 @@ qp.platform = {};
         console.log(this);
         if (this.platform === "http") {
             this.res.end(this.resultText);
-        } else if(qp.platform.nodejs) {
+        } else if (qp.platform.nodejs) {
             console.log(this.resultText);
         } else {
             throw "unimplemented platform: " + this.platform;
@@ -1054,36 +1063,42 @@ qp.platform = {};
     };
     // }}}
     //{{{router
-    var routes = {" ": function(client) {
-        client.text("Route not found. Available routes:" + Object.keys(routes).join("\n    ")).end();
-    }};
+    var routes = {
+        " ": function(client) {
+            client.text("Route not found. Available routes:" + Object.keys(routes).join("\n    ")).end();
+        }
+    };
     //{{{route
     qp.route.add = function(path, fn) {
         routes[path.toLowerCase()] = fn;
-    };//}}}
+    }; //}}}
     //{{{lookupRoute
     qp.route.lookup = function(path) {
         path = path.toLowerCase();
-        while(true) {
-            if(routes[path]) {
+        while (true) {
+            if (routes[path]) {
                 return routes[path];
             }
             var pos = path.lastIndexOf("/");
-            if(pos !== -1) {
+            if (pos !== -1) {
                 path = path.slice(0, pos);
             } else {
                 return routes[" "];
             }
         }
-    };//}}}
+    }; //}}}
     //{{{parseSystemRoute
     qp.route.systemCurrent = function() {
-        if(qp.platform.nodejs) {
-            return {path: process["argv"][2]};
-        } 
-        if(qp.platform.html5) {
+        if (qp.platform.nodejs) {
+            return {
+                path: process["argv"][2]
+            };
+        }
+        if (qp.platform.html5) {
             var path = (location.hash || location.pathname).slice(1);
-            return {path: path};
+            return {
+                path: path
+            };
         }
     }
     //}}}
@@ -1233,7 +1248,7 @@ qp.platform = {};
                 qp.sys.exec("./node_modules/jsdoc/jsdoc -d doc qp.js", function(err) {
                     if (err) throw err;
                 });
-            };//}}}
+            }; //}}}
             qp.route.add("build", buildApp);
         }
         // }}}
