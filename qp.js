@@ -1,5 +1,5 @@
 /*jshint sub:true*/
-/*global PLATFORM_NODEJS PLATFORM_HTML5 process setTimeout location require console window localStorage document module __dirname __filename*/
+/*global BUILTIN_ROUTES PLATFORM_NODEJS PLATFORM_HTML5 process setTimeout location require console window localStorage document module __dirname __filename*/
 /**
  * The qp module is a collection of utilities.
  * @namespace
@@ -76,7 +76,7 @@ qp.route = {};
      */
     qp.obj.notEmptyObject = function(obj) {
         return Object.keys(obj).length !== 0;
-    } //}}}
+    }; //}}}
     //{{{empty
     /** Check if an object is an empty object
      * @param {Object} obj
@@ -296,7 +296,7 @@ qp.route = {};
         return str.replace(/\+/g, " ").replace(/%[0-9a-fA-F][0-9a-fA-F]/g, function(code) {
             return String.fromCharCode(parseInt(code.slice(1), 16));
         });
-    } //}}}
+    }; //}}}
     //name2url{{{
     /** generate a sensible url from a string, replace non-url chars with sensible strings or _
      * @param {string} name
@@ -413,7 +413,7 @@ qp.route = {};
         return qp.fn.trycatch(function() {
             return JSON.parse(require("fs")["readFileSync"](filename, "utf8"));
         }, fn);
-    } //}}}
+    }; //}}}
     // TODO local storage {{{
     if (qp.platform.nodejs) {
         (function() {
@@ -1100,7 +1100,7 @@ qp.route = {};
                 path: path
             };
         }
-    }
+    };
     //}}}
     //{{{main
     function main() {
@@ -1108,7 +1108,7 @@ qp.route = {};
         var fn = qp.route.lookup(route.path);
         var client = new qp.Client(route);
         fn(client);
-    };
+    }
     qp.fn.nextTick(main);
     //}}}
     // css/dom-processing-monad{{{
