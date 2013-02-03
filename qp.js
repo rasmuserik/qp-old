@@ -34,6 +34,22 @@ qp.dev = {};
     /** @type {number} */
     qp.port = 1234;
     // }}}
+    // setup {{{
+    //
+    if(qp.platform.nodejs) {
+        global["CLOSURE_BASE_PATH"] = __dirname + "/external/google-closure-library/closure/goog/"
+        require("closure")["Closure"](global);
+    }
+    if (typeof module !== "undefined") {
+        module["exports"] = function(moduleGlobal) {
+            if(qp.platform.nodejs) {
+                moduleGlobal["CLOSURE_BASE_PATH"] = global["CLOSURE_BASE_PATH"];
+                require("closure")["Closure"](moduleGlobal);
+            }
+            moduleGlobal.qp = qp;
+        }
+    }
+    //}}}
     //util{{{
     if (qp.platform.nodejs) {
         var fs = require("fs");
@@ -1216,14 +1232,20 @@ qp.dev = {};
                 // read the app source code
                 fs["readFile"](process["argv"][1], "utf8", function(err, data) {
                     if (err) throw err;
-                    appSource = data;
-                    fileLoaded();
+                    data = data.replace(/require\s*\(\s*['"](\.\/)?qp['"]\s*\)\s*\(\s*global\s*\)/g, "");
+                    fs["writeFile"](__dirname + "/build/preprocesed.js", data, function() {
+                        appSource = data;
+                        fileLoaded();
+                    });
                 });
                 // read the qp-library source code
                 fs["readFile"](__filename, "utf8", function(err, data) {
                     if (err) throw err;
-                    qpSource = data;
-                    fileLoaded();
+                    data = data.replace(/moduleGlobal.qp\s*=\s*qp\s*;?/g, "");
+                    fs["writeFile"](__dirname + "/build/preprocesed-qp.js", data, function() {
+                        qpSource = data;
+                        fileLoaded();
+                    });
                 });
                 // concatenate
                 function fileLoaded() {
@@ -1239,9 +1261,8 @@ qp.dev = {};
                     source += "/**@const*/var BUILTIN_ROUTES = false;";
                     source += "/**@const*/var PLATFORM_NODEJS = true;";
                     source += "/**@const*/var PLATFORM_HTML5 = false;";
-                    source += "/**@const*/var qpconfig = {bnodejs:true};";
-                    source += qpSource.replace(/global.qp\s*=\s*qp\s*;?/g, "");
-                    source += appSource.replace(/require\s*\(\s*['"](\.\/)?qp['"]\s*\)\s*\(\s*global\s*\)/g, "");
+                    source += qpSource;
+                    source += appSource;
                     closure["compile"](source, {
                         "use_types_for_optimization": "--use_types_for_optimization",
                         "summary_detail_level": "3",
@@ -1276,20 +1297,6 @@ qp.dev = {};
             console.log(stderr, stdout);
         });
     };
-    //}}}
-    // setup {{{
-    //
-    /*
-    if(qp.platform.nodejs) {
-        require("closure")["Closure"](global);
-    }
-    */
-    if (typeof module !== "undefined") {
-        module["exports"] = function(global) {
-            //global.goog = goog;
-            global.qp = qp;
-        }
-    }
     //}}}
     // file end {{{
 })();

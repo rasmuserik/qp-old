@@ -18,3 +18,6 @@ qp.route.add("typecheck", function(client) {
     qp.dev.typecheck("qp.js");
     client.end();
 });
+
+//goog.require("goog.array");
+//console.log(goog.array);
