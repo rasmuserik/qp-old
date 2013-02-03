@@ -22,9 +22,6 @@ qp.arr = {};
 qp.route = {};
 /**@namespace*/
 qp.dev = {};
-if(typeof global === undefined) {
-    global = this;
-}
 (function() {
     "use strict";
     // environment {{{
@@ -1243,8 +1240,8 @@ if(typeof global === undefined) {
                     source += "/**@const*/var PLATFORM_NODEJS = true;";
                     source += "/**@const*/var PLATFORM_HTML5 = false;";
                     source += "/**@const*/var qpconfig = {bnodejs:true};";
-                    source += qpSource.replace("global[\"qp\"] = qp;", "");
-                    source += appSource.replace(/qp\s*=\s*require\s*\(\s*['"](\.\/)?qp['"]\s*\)/g, "");
+                    source += qpSource.replace(/global.qp\s*=\s*qp\s*;?/g, "");
+                    source += appSource.replace(/require\s*\(\s*['"](\.\/)?qp['"]\s*\)\s*\(\s*global\s*\)/g, "");
                     closure["compile"](source, {
                         "use_types_for_optimization": "--use_types_for_optimization",
                         "summary_detail_level": "3",
@@ -1281,16 +1278,18 @@ if(typeof global === undefined) {
     };
     //}}}
     // setup {{{
-    function moduleFn(global) {
-        global["qp"] = qp;
+    //
+    /*
+    if(qp.platform.nodejs) {
+        require("closure")["Closure"](global);
     }
-    if (typeof require === "undefined") {
-        var modules = {qp: moduleFn, "./qp": moduleFn};
-        global.require = function(name) {
-            return modules[name];
+    */
+    if (typeof module !== "undefined") {
+        module["exports"] = function(global) {
+            //global.goog = goog;
+            global.qp = qp;
         }
     }
-    if (typeof module !== "undefined") module["exports"] = moduleFn;
     //}}}
     // file end {{{
 })();

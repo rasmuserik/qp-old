@@ -15,6 +15,6 @@ function defaultFn(client) {
 
 qp.route.add("hello", defaultFn);
 qp.route.add("typecheck", function(client) {
-    qp.dev.typecheck();
+    qp.dev.typecheck("qp.js");
     client.end();
 });
