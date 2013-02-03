@@ -13,22 +13,4 @@ function defaultFn(client) {
     */
 }
 
-qp.register({
-    platforms: ["command", "http"],
-    name: "app",
-    fn: defaultFn
-});
-qp.register({
-    path: "index",
-    fn: defaultFn
-});
-qp.scope({
-    platform: "http"
-}).register({
-    path: "app",
-    fn: defaultFn
-});
-
-new qp.App({
-    name: "qp-main"
-}).any("hello", defaultFn);
+qp.route.add("hello", defaultFn);
