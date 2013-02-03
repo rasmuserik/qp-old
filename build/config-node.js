@@ -1,4 +1,6 @@
-/**@const*/ BUILTIN_ROUTES = false;
-/**@const*/ PLATFORM_NODEJS = false;
-/**@const*/ PLATFORM_HTML5 = false;
-
+/**@const*/ 
+var BUILTIN_ROUTES = false;
+/**@const*/ 
+var PLATFORM_NODEJS = false;
+/**@const*/ 
+var PLATFORM_HTML5 = false;
