@@ -1075,7 +1075,6 @@ qp.dev = {};
         return this;
     };
     qp.Client.prototype.end = function() {
-        console.log(this);
         if (this.opt.platform === "http") {
             this.opt.res.end(this.resultText);
         } else if (qp.platform.nodejs) {
@@ -1117,7 +1116,7 @@ qp.dev = {};
     qp.route.systemCurrent = function() {
         if (qp.platform.nodejs) {
             return {
-                path: process["argv"][2]
+                path: process["argv"][2] || ""
             };
         }
         if (qp.platform.html5) {
