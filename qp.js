@@ -367,12 +367,12 @@ qp.dev = {};
     qp.sys.mkdir = function(path) {
         if (qp.platform.nodejs) {
             if (!fs["existsSync"](path)) {
-                splitpath = path.split("/");
-                while (!spiltpath[spiltpath.length - 1]) {
-                    spiltpath.pop();
+                var splitpath = path.split("/");
+                while (!splitpath[splitpath.length - 1]) {
+                    splitpath.pop();
                 }
-                qp.sys.mkdir(spiltpath.slice(0, -1).join("/"));
-                fs["mkdirSync"](spiltpath.join("/"));
+                qp.sys.mkdir(splitpath.slice(0, -1).join("/"));
+                fs["mkdirSync"](splitpath.join("/"));
             }
         }
     }; //}}}
@@ -1234,16 +1234,16 @@ qp.dev = {};
                     var sourcePath = appSource.replace(/[^\/]*$/, "");
                     var destPath = sourcePath + "build";
                     qp.sys.mkdir(destPath);
-                    preprocessFiles(runClosure);
+                    preprocessFiles(platform, runClosure);
                 }
 
-                function preprocessFiles(callback) {
+                function preprocessFiles(platform, callback) {
                     var count = 2;
 
                     function fileDone() {
                         --count;
                         if (count === 0) {
-                            callback();
+                            callback(platform);
                         }
                     };
 
@@ -1251,7 +1251,7 @@ qp.dev = {};
                     fs["readFile"](appSource, "utf8", function(err, data) {
                         if (err) throw err;
                         data = data.replace(/require\s*\(\s*['"](\.\/)?qp['"]\s*\)\s*\(\s*global\s*\)/g, "");
-                        fs["writeFile"](__dirname + "/build/preprocessed.js", data, function(err) {
+                        fs["writeFile"](destPath + "/preprocessed.js", data, function(err) {
                             if (err) throw err;
                             fileDone();
                         });
@@ -1260,14 +1260,14 @@ qp.dev = {};
                     fs["readFile"](__filename, "utf8", function(err, data) {
                         if (err) throw err;
                         data = data.replace(/moduleGlobal.qp\s*=\s*qp\s*;?/g, "");
-                        fs["writeFile"](__dirname + "/build/preprocessed-qp.js", data, function(err) {
+                        fs["writeFile"](destPath + "/preprocessed-qp.js", data, function(err) {
                             if (err) throw err;
                             fileDone();
                         });
                     });
                 }
 
-                function runClosure() {
+                function runClosure(platform) {
                     var cmd = __dirname + "/external/google-closure-library/closure/bin/calcdeps.py";
                     cmd += " -i " + __dirname + "/build/config-" + platform + ".js";
                     cmd += " -i " + destPath + "/preprocessed-qp.js";
@@ -1288,62 +1288,10 @@ qp.dev = {};
                 }
             }
             //}}}
-            var concatSource = function(callback) { //{{{
-                var fs = require("fs");
-                var appSource, qpSource;
-                // read the app source code
-                fs["readFile"](process["argv"][1], "utf8", function(err, data) {
-                    if (err) throw err;
-                    data = data.replace(/require\s*\(\s*['"](\.\/)?qp['"]\s*\)\s*\(\s*global\s*\)/g, "");
-                    fs["writeFile"](__dirname + "/build/preprocesed.js", data, function() {
-                        appSource = data;
-                        fileLoaded();
-                    });
-                });
-                // read the qp-library source code
-                fs["readFile"](__filename, "utf8", function(err, data) {
-                    if (err) throw err;
-                    data = data.replace(/moduleGlobal.qp\s*=\s*qp\s*;?/g, "");
-                    fs["writeFile"](__dirname + "/build/preprocesed-qp.js", data, function() {
-                        qpSource = data;
-                        fileLoaded();
-                    });
-                });
-                // concatenate
-                function fileLoaded() {
-                    if (!qpSource || !appSource) return;
-                    var dir = process["cwd"]() + "/build";
-                    qp.sys.mkdir(dir);
-                    var outputFileName = dir + "/node.js";
-                    var closure = require("closure-compiler");
-                    console.log("running closure compiler");
-                    //var source = "(function(){" + qpSource + appSource + "})()"
-                    var source = "";
-                    //source += "/**@const*/var process = false";
-                    source += "/**@const*/var BUILTIN_ROUTES = false;";
-                    source += "/**@const*/var PLATFORM_NODEJS = true;";
-                    source += "/**@const*/var PLATFORM_HTML5 = false;";
-                    source += qpSource;
-                    source += appSource;
-                    closure["compile"](source, {
-                        "use_types_for_optimization": "--use_types_for_optimization",
-                        "summary_detail_level": "3",
-                        "warning_level": "VERBOSE",
-                        "jscomp_off": "checkVars",
-                        //"formatting": "PRETTY_PRINT",
-                        "compilation_level": "ADVANCED_OPTIMIZATIONS"
-                    }, function(err, result, stderr) {
-                        if (err) throw err;
-                        console.log(stderr);
-                        console.log("writing", outputFileName);
-                        fs["writeFile"](outputFileName, result);
-                    });
-                }
-            }; //}}}
             var buildApp = function(client) { //{{{
                 //concatSource(function() {});
                 build(process["argv"][1]);
-                qp.sys.exec("./node_modules/jsdoc/jsdoc -d doc qp.js", function(err) {
+                qp.sys.exec(__dirname + "/node_modules/jsdoc/jsdoc -d doc " + __filename, function(err) {
                     if (err) throw err;
                 });
             }; //}}}
