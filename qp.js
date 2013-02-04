@@ -36,13 +36,13 @@ qp.dev = {};
     // }}}
     // setup {{{
     //
-    if(qp.platform.nodejs) {
+    if (qp.platform.nodejs) {
         global["CLOSURE_BASE_PATH"] = __dirname + "/external/google-closure-library/closure/goog/"
         require("closure")["Closure"](global);
     }
     if (typeof module !== "undefined") {
         module["exports"] = function(moduleGlobal) {
-            if(qp.platform.nodejs) {
+            if (qp.platform.nodejs) {
                 moduleGlobal["CLOSURE_BASE_PATH"] = global["CLOSURE_BASE_PATH"];
                 require("closure")["Closure"](moduleGlobal);
             }
@@ -1228,31 +1228,32 @@ qp.dev = {};
         if (qp.platform.nodejs) {
             var build = function(appSource, callback) {
                 var platforms = ["node", "html5"];
-                for(var i = 0; i < platforms.length; ++i) {
+                for (var i = 0; i < platforms.length; ++i) {
                     var platform = platforms[i];
-                var sourcePath = appSource.replace(/[^\/]*$/, "");
-                var destPath = sourcePath + "build";
-                qp.sys.mkdir(destPath);
-                runClosure();
-                function runClosure() {
-                var cmd = __dirname + "/external/google-closure-library/closure/bin/calcdeps.py";
-                cmd += " -i " + __dirname + "/build/config-" + platform + ".js";
-                cmd += " -i " + destPath + "/preprocessed-qp.js";
-                cmd += " -i " + destPath + "/preprocessed.js";
-                cmd += " -d " + __dirname + "/external/google-closure-library";
-                cmd += " -o compiled";
-                cmd += " -c " + __dirname + "/node_modules/closure-compiler/lib/vendor/compiler.jar";
-                cmd += " --output_file " + destPath + "/"+ platform +".js";
-                cmd += " -f --use_types_for_optimization";
-                cmd += " -f --summary_detail_level -f 3";
-                cmd += " -f --warning_level -f VERBOSE";
-                cmd += " -f --jscomp_off -f checkVars";
-                cmd += " -f --compilation_level -f ADVANCED_OPTIMIZATIONS";
-                qp.sys.exec(cmd, function(err, stderr, stdout) {
-                    if(err) throw err;
-                    console.log(stderr, stdout);
-                });
-                }
+                    var sourcePath = appSource.replace(/[^\/]*$/, "");
+                    var destPath = sourcePath + "build";
+                    qp.sys.mkdir(destPath);
+                    runClosure();
+
+                    function runClosure() {
+                        var cmd = __dirname + "/external/google-closure-library/closure/bin/calcdeps.py";
+                        cmd += " -i " + __dirname + "/build/config-" + platform + ".js";
+                        cmd += " -i " + destPath + "/preprocessed-qp.js";
+                        cmd += " -i " + destPath + "/preprocessed.js";
+                        cmd += " -d " + __dirname + "/external/google-closure-library";
+                        cmd += " -o compiled";
+                        cmd += " -c " + __dirname + "/node_modules/closure-compiler/lib/vendor/compiler.jar";
+                        cmd += " --output_file " + destPath + "/" + platform + ".js";
+                        cmd += " -f --use_types_for_optimization";
+                        cmd += " -f --summary_detail_level -f 3";
+                        cmd += " -f --warning_level -f VERBOSE";
+                        cmd += " -f --jscomp_off -f checkVars";
+                        cmd += " -f --compilation_level -f ADVANCED_OPTIMIZATIONS";
+                        qp.sys.exec(cmd, function(err, stderr, stdout) {
+                            if (err) throw err;
+                            console.log(stderr, stdout);
+                        });
+                    }
                 }
             }
             var concatSource = function(callback) { //{{{
