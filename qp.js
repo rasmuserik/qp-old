@@ -51,7 +51,6 @@ qp.dev = {};
     }
     }
     //}}}
-    //util{{{
     if (qp.platform.nodejs) {
         var fs = require("fs");
     }
@@ -69,6 +68,25 @@ qp.dev = {};
         }
         return target;
     }; //}}}
+    //{{{get
+    qp.obj.get = function(obj, key, defaultVal) {
+        var result = obj[key];
+        if(result === undefined) {
+            result = defaultVal;
+        }
+        return result;
+    }
+    //}}}
+    //{{{listAdd
+    qp.obj.listAdd = function(obj, key, val) {
+        var arr = obj[key];
+        if(Array.isArray(arr)) {
+            arr.push(val);
+        } else {
+            obj[key] = [val];
+        }
+    }
+    //}}}
     //{{{map
     /** map a function across the values of an object, and return a new object with the resulting values
      * @param {!Object} obj
@@ -464,7 +482,6 @@ qp.dev = {};
             }
         };
     } //}}}
-    //}}}
     //}}}
     // qp.V2d {{{
     /** simple 2d vector
@@ -1066,8 +1083,8 @@ qp.dev = {};
     // }}}
     // qp.Client {{{
     /** @constructor */
-    qp.Client = function(path, opt) {
-        this.path = path
+    qp.Client = function(args, opt) {
+        this.args = args;
         this.opt = opt || {};
     };
     qp.Client.prototype.text = function(str) {
@@ -1112,94 +1129,45 @@ qp.dev = {};
             }
         }
     }; //}}}
-    //{{{parseSystemRoute
+    //{{{systemCurrent
     /** get the current path/arguments/... @return {Object} */
     qp.route.systemCurrent = function() {
         if (qp.platform.nodejs) {
-            return {
-                path: process["argv"][2] || ""
-            };
+            var argv = process["argv"];
+            var key = "path";
+            var result = {};
+            for(var i = 2; i < argv.length; ++i) {
+                if(argv[i][0] === "-") {
+                    key = argv[i].replace(/^--?/, "");
+                    if(!result[key]) {
+                        result[key] = [];
+                    }
+                } else {
+                    qp.obj.listAdd(result, key, argv[i]);
+                }
+            }
         }
         if (qp.platform.html5) {
             var path = (location.hash || location.pathname).slice(1);
-            return {
-                path: path
-            };
+            var type = path.split(".")[1];
+            var path = path.split(".")[0];
+            var result = {path: [path], type: type && [type]};
+            location.search.slice(1).split("&").forEach(function(str) {
+                var split = str.split("=");
+                param[split[0]] = [split[1]];
+            });
         }
+        return result;
     };
     //}}}
     //{{{main
     function main() {
         var route = qp.route.systemCurrent();
-        var fn = qp.route.lookup(route.path);
-        var client = new qp.Client(route.path, route);
+        var fn = qp.route.lookup((route.path && route.path[0]) || "");
+        var client = new qp.Client(route, {});
         fn(client);
     }
     qp.fn.nextTick(main);
-    //}}}
-    // css/dom-processing-monad{{{
-    // DomProcess {{{
-    /**@constructor*/
-    function DomProcess() { //{{{
-        this.apply = function(dom) {
-            return this;
-        };
-    } //}}}
-    DomProcess.prototype.bind = function(f) { //{{{
-        var apply = this.apply;
-        this.apply = function(dom) {
-            apply.apply(this, [dom]);
-            f(dom);
-            return this;
-        };
-        return this;
-    }; //}}}
-    DomProcess.prototype.css = function(style) { //{{{
-        this.bind(function(dom) {
-            var styleObj = dom.style;
-            for (var prop in style) {
-                var val = style[prop];
-                if (typeof val === "number") {
-                    val = (val | 0) + "px";
-                }
-                styleObj[prop] = val;
-            }
-        });
-        return this;
-    }; //}}}
-    DomProcess.prototype.on = function(event, fn) { //{{{
-        this.bind(function(dom) {
-            var evs = event.split(" ");
-            for (var i = 0; i < evs.length; ++i) {
-                dom["on" + evs[i]] = fn;
-            }
-        });
-        return this;
-    }; //}}}
-    //}}}
-    function css(obj) { //{{{
-        return (new DomProcess()).css(obj);
-    } //}}}
-    function domRecursiveApply(domNode, table) { //{{{
-        var i;
-        var classes = domNode.classList;
-        if (classes) {
-            for (i = 0; i < classes.length; ++i) {
-                var entry = table[classes[i]];
-                if (entry) {
-                    entry.apply(domNode);
-                }
-            }
-        }
-        if (table["default"]) {
-            table["default"].apply(domNode);
-        }
-
-        var children = domNode.children;
-        for (i = 0; i < children.length; ++i) {
-            domRecursiveApply(children[i], table);
-        }
-    } //}}}
     //}}}
     // builtin routes {{{
     if (typeof BUILTIN_ROUTES !== "undefined" ? BUILTIN_ROUTES : true) {
@@ -1209,7 +1177,7 @@ qp.dev = {};
                 var devServer = function(req, res) {
                     var path = req.url.slice(1).split(/[.?]/)[0];
                     var fn = qp.route.lookup(path);
-                    var client = new qp.Client(path, {
+                    var client = new qp.Client({path:path}, {
                         platform: "http",
                         req: req,
                         res: res
@@ -1300,6 +1268,70 @@ qp.dev = {};
         // }}}
     }
     // }}}
+    //}}}
+    // css/dom-processing-monad{{{
+    // DomProcess {{{
+    /**@constructor*/
+    function DomProcess() { //{{{
+        this.apply = function(dom) {
+            return this;
+        };
+    } //}}}
+    DomProcess.prototype.bind = function(f) { //{{{
+        var apply = this.apply;
+        this.apply = function(dom) {
+            apply.apply(this, [dom]);
+            f(dom);
+            return this;
+        };
+        return this;
+    }; //}}}
+    DomProcess.prototype.css = function(style) { //{{{
+        this.bind(function(dom) {
+            var styleObj = dom.style;
+            for (var prop in style) {
+                var val = style[prop];
+                if (typeof val === "number") {
+                    val = (val | 0) + "px";
+                }
+                styleObj[prop] = val;
+            }
+        });
+        return this;
+    }; //}}}
+    DomProcess.prototype.on = function(event, fn) { //{{{
+        this.bind(function(dom) {
+            var evs = event.split(" ");
+            for (var i = 0; i < evs.length; ++i) {
+                dom["on" + evs[i]] = fn;
+            }
+        });
+        return this;
+    }; //}}}
+    //}}}
+    function css(obj) { //{{{
+        return (new DomProcess()).css(obj);
+    } //}}}
+    function domRecursiveApply(domNode, table) { //{{{
+        var i;
+        var classes = domNode.classList;
+        if (classes) {
+            for (i = 0; i < classes.length; ++i) {
+                var entry = table[classes[i]];
+                if (entry) {
+                    entry.apply(domNode);
+                }
+            }
+        }
+        if (table["default"]) {
+            table["default"].apply(domNode);
+        }
+
+        var children = domNode.children;
+        for (i = 0; i < children.length; ++i) {
+            domRecursiveApply(children[i], table);
+        }
+    } //}}}
     //}}}
     // file end {{{
 })();
