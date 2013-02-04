@@ -2,21 +2,21 @@ require("./qp")(global);
 
 function defaultFn(client) {
     client.text("Hello from app");
-    return client.end();
+    return client.done();
     /*
     client.title("Hello world");
     client.body([
         ["h1", "Hello world"],
         ["p", "test paragraph"]
     ]);
-    client.end();
+    client.done();
     */
 }
 
 qp.route.add("hello", defaultFn);
 qp.route.add("typecheck", function(client) {
     qp.dev.typecheck("qp.js");
-    client.end();
+    client.done();
 });
 
 //goog.require("goog.array");

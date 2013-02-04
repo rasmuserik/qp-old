@@ -1075,7 +1075,7 @@ qp.dev = {};
         this.resultText = prev + str;
         return this;
     };
-    qp.Client.prototype.end = function() {
+    qp.Client.prototype.done = function() {
         if (this.opt.platform === "http") {
             this.opt.res.end(this.resultText);
         } else if (qp.platform.nodejs) {
@@ -1088,7 +1088,7 @@ qp.dev = {};
     //{{{router
     var routes = {
         " ": function(client) {
-            client.text("Route not found. Available routes:" + Object.keys(routes).join("\n    ")).end();
+            client.text("Route not found. Available routes:" + Object.keys(routes).join("\n    ")).done();
         }
     };
     //{{{route
