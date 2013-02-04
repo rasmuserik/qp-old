@@ -35,7 +35,7 @@ qp.dev = {};
     qp.port = 1234;
     // }}}
     // setup {{{
-    //
+    if (typeof BUILTIN_ROUTES !== "undefined" ? BUILTIN_ROUTES : true) {
     if (qp.platform.nodejs) {
         global["CLOSURE_BASE_PATH"] = __dirname + "/external/google-closure-library/closure/goog/"
         require("closure")["Closure"](global);
@@ -48,6 +48,7 @@ qp.dev = {};
             }
             moduleGlobal.qp = qp;
         }
+    }
     }
     //}}}
     //util{{{
@@ -1299,14 +1300,6 @@ qp.dev = {};
         // }}}
     }
     // }}}
-    //}}}
-    //{{{dev
-    qp.dev.typecheck = function(fname) {
-        qp.sys.exec("java -jar ./node_modules/closure-compiler/lib/vendor/compiler.jar --summary_detail_level 3 --warning_level VERBOSE --jscomp_off=checkVars --js_output_file /dev/zero qp.js", function(err, stdout, stderr) {
-            if (err) throw err;
-            console.log(stderr, stdout);
-        });
-    };
     //}}}
     // file end {{{
 })();
