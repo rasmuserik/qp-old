@@ -603,12 +603,12 @@ qp.dev = {};
     //{{{str
     qp.str.binSplit = function(str, symb) {
         var pos = str.indexOf(symb);
-        if(pos === -1) {
+        if (pos === -1) {
             return [str, ""];
         } else {
             return [str.slice(0, pos), str.slice(pos + symb.length)];
         }
-    };//}}}
+    }; //}}}
     //uniqId{{{
     /** get an uniq id by concatenating a prefix to a sequential number
      * @param {string=} prefix
@@ -1183,7 +1183,7 @@ qp.dev = {};
     //{{{fromUrl
     qp.route.fromUrl = function(str) {
         // remove host
-        str = str.replace(/^(https?:\/\/.*?)?\//,"");
+        str = str.replace(/^(https?:\/\/.*?)?\//, "");
 
         // extract search/arguments
         var split = qp.str.binSplit(str, "?");
@@ -1200,16 +1200,16 @@ qp.dev = {};
         // create result object
         var result = {};
         result.path = split[0];
-        if(split[1]) {
+        if (split[1]) {
             result.type = split[1];
         }
-        if(param) {
-            result.param= {};
+        if (param) {
+            result.param = {};
             param.split("&").forEach(function(str) {
                 var split = qp.str.binSplit(str, "=");
                 result.param[split[0]] = split[1];
             });
-        } 
+        }
         return result;
     }
     //}}}
@@ -1223,16 +1223,16 @@ qp.dev = {};
     qp.route.lookup = function(route) {
         var path = route.path || "";
         path = "/" + path.toLowerCase();
-        while(!routes[path.slice(1)]) {
+        while (!routes[path.slice(1)]) {
             var pos = path.lastIndexOf("/");
-            if(pos === -1) {
+            if (pos === -1) {
                 path = "/DEFAULT";
             } else {
                 path = path.slice(0, pos);
             }
         }
         path = path.slice(1);
-        if(path === "DEFAULT") {
+        if (path === "DEFAULT") {
             route.args = route.path;
             route.path = undefined;
         } else {
@@ -1248,7 +1248,9 @@ qp.dev = {};
     qp.route.systemCurrent = function() {
         if (qp.platform.nodejs) {
             var argv = process["argv"];
-            return {path: argv[2] || ""}
+            return {
+                path: argv[2] || ""
+            }
             /*
             var key = "path";
             var result = {};
@@ -1287,7 +1289,7 @@ qp.dev = {};
         var client = new qp.Client({
             route: route,
             done: function() {
-                if(this.result[0] === "qp:text") {
+                if (this.result[0] === "qp:text") {
                     console.log(this.result[2]);
                 } else {
                     console.log(this.result);
@@ -1304,7 +1306,8 @@ qp.dev = {};
         var server = function(req, res) {
             var route = qp.route.fromUrl(req.url);
             var fn = qp.route.lookup(route);
-            var client = new qp.Client({route: route,
+            var client = new qp.Client({
+                route: route,
                 done: function() {
                     var json = this.result;
                     var result = undefined;
