@@ -601,6 +601,14 @@ qp.dev = {};
     }; //}}}
     //}}}
     //{{{str
+    qp.str.binSplit = function(str, symb) {
+        var pos = str.indexOf(symb);
+        if(pos === -1) {
+            return [str, ""];
+        } else {
+            return [str.slice(0, pos), str.slice(pos + symb.length)];
+        }
+    };//}}}
     //uniqId{{{
     /** get an uniq id by concatenating a prefix to a sequential number
      * @param {string=} prefix
@@ -1172,6 +1180,39 @@ qp.dev = {};
             client.text("Route not found. Available routes:" + Object.keys(routes).join("\n    "));
         }
     };
+    //{{{fromUrl
+    qp.route.fromUrl = function(str) {
+        // remove host
+        str = str.replace(/^(https?:\/\/.*?)?\//,"");
+
+        // extract search/arguments
+        var split = qp.str.binSplit(str, "?");
+        var str = split[0];
+        var args = split[1];
+
+        // use hash as path instead of url if available
+        var split = qp.str.binSplit(str, "#");
+        str = split[1] || split[0];
+
+        // extract path and filetype
+        var split = qp.str.binSplit(str, ".");
+
+        // create result object
+        var result = {};
+        result.path = split[0];
+        if(split[1]) {
+            result.type = split[1];
+        }
+        if(args) {
+            result.args = {};
+            args.split("&").forEach(function(str) {
+                var split = qp.str.binSplit(str, "=");
+                result.args[split[0]] = split[1];
+            });
+        } 
+        return result;
+    }
+    //}}}
     //{{{add
     /** add a new route @param {string} path path for the route @param {function(qp.Client)} fn */
     qp.route.add = function(path, fn) {
@@ -1179,17 +1220,24 @@ qp.dev = {};
     }; //}}}
     //{{{lookupRoute
     /** given a path, return the corresponding handling function @param {string} path */
-    qp.route.lookup = function(path) {
+    qp.route.lookup = function(route) {
+        var path = route.path || "";
         path = path.toLowerCase();
         while (true) {
             if (routes[path]) {
-                return routes[path];
+                route.args = route.path.slice(path.length);
+                route.path = path;
+                route.fn = routes[path];
+                return route.fn;
             }
             var pos = path.lastIndexOf("/");
             if (pos !== -1) {
                 path = path.slice(0, pos);
             } else {
-                return routes[" "];
+                route.args = route.path;
+                route.path = " ";
+                route.fn = routes[" "];
+                return route.fn;
             }
         }
     }; //}}}
@@ -1198,6 +1246,8 @@ qp.dev = {};
     qp.route.systemCurrent = function() {
         if (qp.platform.nodejs) {
             var argv = process["argv"];
+            return {path: argv[2] || ""}
+            /*
             var key = "path";
             var result = {};
             for (var i = 2; i < argv.length; ++i) {
@@ -1210,6 +1260,7 @@ qp.dev = {};
                     qp.obj.listAdd(result, key, argv[i]);
                 }
             }
+            */
         }
         if (qp.platform.html5) {
             var path = (location.hash || location.pathname).slice(1);
@@ -1230,11 +1281,15 @@ qp.dev = {};
     //{{{main
     function main() {
         var route = qp.route.systemCurrent();
-        var fn = qp.route.lookup((route.path && route.path[0]) || "");
+        var fn = qp.route.lookup(route);
         var client = new qp.Client({
             route: route,
             done: function() {
-                console.log(this.result);
+                if(this.result[0] === "qp:text") {
+                    console.log(this.result[2]);
+                } else {
+                    console.log(this.result);
+                }
             }
         });
         fn(client);
@@ -1245,12 +1300,9 @@ qp.dev = {};
     // dev-server {{{
     qp.route.devServer = function(client) {
         var server = function(req, res) {
-            var path = req.url.slice(1).split(/[.?]/)[0];
-            var fn = qp.route.lookup(path);
-            var client = new qp.Client({
-                route: {
-                    path: path
-                },
+            var route = qp.route.fromUrl(req.url);
+            var fn = qp.route.lookup(route);
+            var client = new qp.Client({route: route,
                 done: function() {
                     var json = this.result;
                     var result = undefined;
