@@ -15,6 +15,8 @@ qp.set = {};
 /**@namespace*/
 qp.str = {};
 /**@namespace*/
+qp.jsonml = {};
+/**@namespace*/
 qp.obj = {};
 /**@namespace*/
 qp.arr = {};
@@ -55,6 +57,11 @@ qp.dev = {};
         var fs = require("fs");
     }
     //{{{obj
+    //{{{isObject
+    qp.obj.isObject = function(obj) {
+        return typeof obj === object && obj !== null && obj.constructor === Object;
+    };
+    //}}}
     //{{{extend
     /** Copy elements from a list of objects onto target
      * @type {function(Object, ...[Object]): Object}
@@ -126,6 +133,14 @@ qp.dev = {};
             fn(key, obj[key]);
         });
     }; //}}}
+    //{{{values
+    qp.obj.values = function(obj) {
+        var result = [];
+        for (var key in obj) {
+            result.push(obj[key]);
+        }
+        return result;
+    } //}}}
     //}}}
     //{{{arr
     //listpp{{{
@@ -210,6 +225,280 @@ qp.dev = {};
             fn(key, cb);
         });
     }; //}}}
+    //}}}
+    //{{{jsonml
+    var xmlEntities = { //{{{
+        lt: "<",
+        gt: ">",
+        amp: "&",
+        quot: "\"",
+        nbsp: "\xa0"
+    }; //}}}
+    //{{{fromString
+    /** @param {string} str */
+    qp.jsonml.fromString = function(str) { 
+        var errors = [];
+
+        function jsonmlError(str) {
+            errors.push(str);
+        }
+        if (typeof(str) !== "string") {
+            throw "parameter must be string";
+        }
+
+        /** white space definition */
+        var whitespace = " \n\r\t";
+        /** the current char in the string that is being parsed */
+        var c = str[0];
+        /** The position in the string */
+        var pos = 0;
+        /** Stack for handling nested tags */
+        var stack = [];
+        /** Current tag being parsed */
+        var tag = [];
+        /** read the next char from the string */
+        function next_char() {
+            c = ++pos < str.length ? str[pos] : undefined;
+        }
+        /** check if the current char is one of those in the string parameter */
+        function is_a(str) {
+            return str.indexOf(c) !== -1;
+        }
+        /** return the string from the current position to right before the first
+         * occurence of any of symb. Translate escaped xml entities to their value
+         * on the fly.
+         */
+        function read_until(symb) {
+            var result = "";
+            while (c && !is_a(symb)) {
+                if (c === '&') {
+                    next_char();
+                    var entity = read_until(';');
+                    if (entity[0] === '#') {
+                        if (entity[1] === 'x') {
+                            c = String.fromCharCode(parseInt(entity.slice(2), 16));
+                        } else {
+                            c = String.fromCharCode(parseInt(entity.slice(1), 10));
+                        }
+                    } else {
+                        c = xmlEntities[entity];
+                        if (!c) {
+                            jsonmlError("error: unrecognisable xml entity: " + entity);
+                        }
+                    }
+                }
+                result += c;
+                next_char();
+            }
+            return result;
+        }
+
+        // The actual parsing
+        while (is_a(whitespace)) {
+            next_char();
+        }
+        while (c) {
+            if (is_a("<")) {
+                next_char();
+
+                // `<?xml ... >`, `<!-- -->` or similar - skip these
+                if (is_a("?!")) {
+                    if (str.slice(pos, pos + 3) === "!--") {
+                        pos += 3;
+                        while (pos <= str.length && str.slice(pos, pos + 2) !== "--") {
+                            ++pos;
+                        }
+                    }
+                    read_until('>');
+                    next_char();
+
+                    // `<sometag ...>` - handle begin tag
+                } else if (!is_a("/")) {
+                    // read tag name
+                    var newtag = [read_until(whitespace + ">/")];
+
+                    // read attributes
+                    var attributes = {};
+                    while (c && is_a(whitespace)) {
+                        next_char();
+                    }
+                    while (c && !is_a(">/")) {
+                        var attr = read_until(whitespace + "=>");
+                        if (c === "=") {
+                            next_char();
+                            var value_terminator = whitespace + ">/";
+                            if (is_a('"\'')) {
+                                value_terminator = c;
+                                next_char();
+                            }
+                            attributes[attr] = read_until(value_terminator);
+                            if (is_a('"\'')) {
+                                next_char();
+                            }
+                        } else {
+                            jsonmlError("something not attribute in tag");
+                        }
+                        while (c && is_a(whitespace)) {
+                            next_char();
+                        }
+                    }
+                    newtag.push(attributes);
+
+                    // end of tag, is it `<.../>` or `<...>`
+                    if (is_a("/")) {
+                        next_char();
+                        if (!is_a(">")) {
+                            jsonmlError('expected ">" after "/" within tag');
+                        }
+                        tag.push(newtag);
+                    } else {
+                        stack.push(tag);
+                        tag = newtag;
+                    }
+                    next_char();
+
+                    // `</something>` - handle end tag
+                } else {
+                    next_char();
+                    if (read_until(">") !== tag[0]) {
+                        jsonmlError("end tag not matching: " + tag[0]);
+                    }
+                    next_char();
+                    var parent_tag = stack.pop();
+                    if (tag.length <= 2 && !Array.isArray(tag[1]) && typeof(tag[1]) !== "string") {
+                        tag.push("");
+                    }
+                    parent_tag.push(tag);
+                    tag = parent_tag;
+
+                }
+
+                // actual content / data between tags
+            } else {
+                tag.push(read_until("<"));
+            }
+        }
+        if (errors.length) {
+            console.log(errors);
+        }
+        return tag;
+    } //}}}
+    //{{{toString
+    /** @param {*} jsonml */
+    qp.jsonml.toString = function(jml) { 
+        if (Array.isArray(jml)) {
+            var children;
+            var classes = jml[0].split(".");
+            var name = classes[0];
+            classes = classes.slice(1);
+            var attr = jml[1];
+            var pos = 1;
+            if (typeof attr === "object" && attr.constructor === Object) {
+                children = jml.slice(2);
+                attr = attr;
+            } else {
+                children = jml.slice(1);
+                attr = {};
+            }
+            if (classes.length) {
+                attr["class"] = classes.join(" ");
+            }
+            var result = "<" + name + Object.keys(attr).map(function(key) {
+                return " " + key + "=\"" + attr[key] + "\"";
+            }).join("");
+
+            if (children.length === 0) {
+                result += "/>";
+            } else {
+                result += ">";
+                result += children.map(qp.jsonml.toString).join("");
+                result += "</" + name + ">";
+            }
+
+            return result;
+        } else {
+            return String(jml);
+        }
+    } //}}}
+    //{{{toDom
+    qp.jsonml.toDom = function(jsonml) {
+        if (Array.isArray(jsonml)) {
+            var children;
+            var classes = jsonml[0].split(".");
+            var name = classes[0];
+            classes = classes.slice(1);
+            var attr = jsonml[1];
+            var pos = 1;
+            if (typeof attr === "object" && attr.constructor === Object) {
+                ++pos;
+                attr = attr;
+            } else {
+                attr = {};
+            }
+            if (classes.length) {
+                attr["class"] = classes.join(" ");
+            }
+            var elem = document.createElement(name);
+            for (var prop in attr) {
+                elem.setAttribute(prop, attr[prop]);
+            }
+            while (pos < jsonml.length) {
+                if (jsonml[pos]) {
+                    elem.appendChild(jsonmlToDom(jsonml[pos]));
+                }++pos;
+            }
+            return elem;
+        } else if (typeof jsonml === "string" || typeof jsonml === "number") {
+            return document.createTextNode(String(jsonml));
+        } else {
+            return jsonml;
+        }
+    } //}}}
+    //{{{isCanonical
+    qp.jsonml.isCanonical = function(jsonml) {
+        if(Array.isArray(jsonml)) {
+            if(typeof jsonml[0] !== "string" || !qp.obj.isObject(jsonml[1])) {
+                return false;
+            }
+            for(var i = 2; i < jsonml.length; ++i) {
+                if(!qp.jsonml.isCanonical(jsonml[i])) {
+                    return false;
+                }
+            }
+        } else if(typeof jsonml !== "string") {
+            return false;
+        }
+        return true;
+    };
+    //}}}
+    //{{{canonical
+    qp.jsonml.canonical = function(jsonml) {
+        if(Array.isArray(jsonml)) {
+            if(!qp.obj.isObject(jsonml[1])) {
+                jsonml = [jsonml[0], {}].concat(jsonml.slice(1));
+            }
+            return jsonml.map(qp.jsonml.canonical);
+        }
+        return jsonml;
+    };
+    //}}}
+    //{{{filterWhitespace
+    qp.jsonml.filterWhitespace = function(jsonml) {
+        if (typeof jsonml === "string") {
+            return jsonml.trim();
+        } else if (Array.isArray(jsonml)) {
+            var len = jsonml.length
+            var result = jsonml.map(qp.jsonml.filterWhitespace).filter(function(s) {
+                return s !== "";
+            });
+            if(result.length === 2 && len > 2) {
+                result.push("");
+            }
+            return result;
+        } else {
+            return jsonml;
+        }
+    } //}}}
     //}}}
     //{{{set
     //fromArray{{{
@@ -726,337 +1015,6 @@ qp.dev = {};
         test.done();
     }; //}}}
     // }}}
-    // HXML {{{
-    //{{{constructor
-    /**@constructor*/
-    qp.HXML = function(obj, parent) {
-        var xml;
-        this.parent = parent;
-
-        // Handle string-encoded xml
-        if (typeof obj === "string") {
-            xml = strToJsonml(obj);
-        }
-
-        // Handle jsonml
-        if (Array.isArray(obj)) {
-            xml = obj;
-            if (typeof xml[0] === "string") {
-                this.tagName = xml[0];
-                xml = xml.slice(1);
-            } else {
-                this.tagName = undefined;
-            }
-
-            if (typeof xml[0] === "object" && xml[1].constructor !== Object) {
-                this.attributes = xml[0];
-                xml = xml.slice(1);
-            } else {
-                this.attributes = {};
-            }
-
-            var self = this;
-            this.childArray = xml.map(function(node) {
-                if (Array.isArray(node)) {
-                    return new qp.HXML(node, self);
-                } else {
-                    return node;
-                }
-            });
-
-            // Handle DOM
-        } else if (obj instanceof Element) {
-            throw "not implemented yet";
-        } else {
-            throw "wrong parameter";
-        }
-    };
-    //}}}
-    //{{{toJSON
-    var restoreJsonFromHXML = function(hxml) {
-        throw "not implementd";
-    }
-    qp.HXML.prototype.toJSON = function() {
-        if (this.parent === undefined && this.tagName === "json" && this.attributes["xmlns"] === "http://solsort.com/hxml" && this.childArray.length === 1) {
-            return restoreJsonFromHXML(this.childArray[0]);
-        } else {
-            return [this.tagName, this.attributes].concat(this.childArray.map(function(child) {}));
-        }
-    }
-    //}}}
-    //{{{fromJSON
-    qp.HXML.fromJSON = function(json) {
-        function json2jsonml(json) {
-            if (typeof json === "string") {
-                return ["string", json];
-            } else if (typeof json === "number") {
-                return ["number", json];
-            } else if (json === true) {
-                return ["true"];
-            } else if (json === false) {
-                return ["false"];
-            } else if (json === null) {
-                return ["null"];
-            } else if (Array.isArray(json)) {
-                return ["array"].concat(json.map(json2jsonml));
-            } else {
-                var result = ["object"];
-                for (var key in json) {
-                    result.push(["member", {
-                        key: key
-                    },
-                    json2jsonml(json[key])]);
-                }
-                return result;
-            }
-        }
-        return new HXML(["json", {
-            xmlns: "http://solsort.com/hxml"
-        },
-        json2jsonml(json)]);
-    };
-    //}}}
-    var xmlEntities = { //{{{
-        lt: "<",
-        gt: ">",
-        amp: "&",
-        quot: "\"",
-        nbsp: "\xa0"
-    }; //}}}
-    function jmlFilterWs(jml) { //{{{
-        if (typeof jml === "string") {
-            return jml.trim();
-        } else if (Array.isArray(jml)) {
-            return jml.map(jmlFilterWs).filter(function(s) {
-                return s !== "";
-            });
-        } else {
-            return jml;
-        }
-    } //}}}
-    function strToJsonml(str) { //{{{
-        var errors = [];
-
-        function jsonmlError(str) {
-            errors.push(str);
-        }
-        if (typeof(str) !== "string") {
-            throw "parameter must be string";
-        }
-
-        /** white space definition */
-        var whitespace = " \n\r\t";
-        /** the current char in the string that is being parsed */
-        var c = str[0];
-        /** The position in the string */
-        var pos = 0;
-        /** Stack for handling nested tags */
-        var stack = [];
-        /** Current tag being parsed */
-        var tag = [];
-        /** read the next char from the string */
-        function next_char() {
-            c = ++pos < str.length ? str[pos] : undefined;
-        }
-        /** check if the current char is one of those in the string parameter */
-        function is_a(str) {
-            return str.indexOf(c) !== -1;
-        }
-        /** return the string from the current position to right before the first
-         * occurence of any of symb. Translate escaped xml entities to their value
-         * on the fly.
-         */
-        function read_until(symb) {
-            var result = "";
-            while (c && !is_a(symb)) {
-                if (c === '&') {
-                    next_char();
-                    var entity = read_until(';');
-                    if (entity[0] === '#') {
-                        if (entity[1] === 'x') {
-                            c = String.fromCharCode(parseInt(entity.slice(2), 16));
-                        } else {
-                            c = String.fromCharCode(parseInt(entity.slice(1), 10));
-                        }
-                    } else {
-                        c = xmlEntities[entity];
-                        if (!c) {
-                            jsonmlError("error: unrecognisable xml entity: " + entity);
-                        }
-                    }
-                }
-                result += c;
-                next_char();
-            }
-            return result;
-        }
-
-        // The actual parsing
-        while (is_a(whitespace)) {
-            next_char();
-        }
-        while (c) {
-            if (is_a("<")) {
-                next_char();
-
-                // `<?xml ... >`, `<!-- -->` or similar - skip these
-                if (is_a("?!")) {
-                    if (str.slice(pos, pos + 3) === "!--") {
-                        pos += 3;
-                        while (pos <= str.length && str.slice(pos, pos + 2) !== "--") {
-                            ++pos;
-                        }
-                    }
-                    read_until('>');
-                    next_char();
-
-                    // `<sometag ...>` - handle begin tag
-                } else if (!is_a("/")) {
-                    // read tag name
-                    var newtag = [read_until(whitespace + ">/")];
-
-                    // read attributes
-                    var attributes = {};
-                    while (c && is_a(whitespace)) {
-                        next_char();
-                    }
-                    while (c && !is_a(">/")) {
-                        var attr = read_until(whitespace + "=>");
-                        if (c === "=") {
-                            next_char();
-                            var value_terminator = whitespace + ">/";
-                            if (is_a('"\'')) {
-                                value_terminator = c;
-                                next_char();
-                            }
-                            attributes[attr] = read_until(value_terminator);
-                            if (is_a('"\'')) {
-                                next_char();
-                            }
-                        } else {
-                            jsonmlError("something not attribute in tag");
-                        }
-                        while (c && is_a(whitespace)) {
-                            next_char();
-                        }
-                    }
-                    newtag.push(attributes);
-
-                    // end of tag, is it `<.../>` or `<...>`
-                    if (is_a("/")) {
-                        next_char();
-                        if (!is_a(">")) {
-                            jsonmlError('expected ">" after "/" within tag');
-                        }
-                        tag.push(newtag);
-                    } else {
-                        stack.push(tag);
-                        tag = newtag;
-                    }
-                    next_char();
-
-                    // `</something>` - handle end tag
-                } else {
-                    next_char();
-                    if (read_until(">") !== tag[0]) {
-                        jsonmlError("end tag not matching: " + tag[0]);
-                    }
-                    next_char();
-                    var parent_tag = stack.pop();
-                    if (tag.length <= 2 && !Array.isArray(tag[1]) && typeof(tag[1]) !== "string") {
-                        tag.push("");
-                    }
-                    parent_tag.push(tag);
-                    tag = parent_tag;
-
-                }
-
-                // actual content / data between tags
-            } else {
-                tag.push(read_until("<"));
-            }
-        }
-        if (errors.length) {
-            console.log(errors);
-        }
-        return tag;
-    } //}}}
-    function values(obj) { //{{{
-        var result = [];
-        for (var key in obj) {
-            result.push(obj[key]);
-        }
-        return result;
-    } //}}}
-    function jmlToDom(jml) { //{{{
-        if (Array.isArray(jml)) {
-            var children;
-            var classes = jml[0].split(".");
-            var name = classes[0];
-            classes = classes.slice(1);
-            var attr = jml[1];
-            var pos = 1;
-            if (typeof attr === "object" && attr.constructor === Object) {
-                ++pos;
-                attr = attr;
-            } else {
-                attr = {};
-            }
-            if (classes.length) {
-                attr["class"] = classes.join(" ");
-            }
-            var elem = document.createElement(name);
-            for (var prop in attr) {
-                elem.setAttribute(prop, attr[prop]);
-            }
-            while (pos < jml.length) {
-                if (jml[pos]) {
-                    elem.appendChild(jmlToDom(jml[pos]));
-                }++pos;
-            }
-            return elem;
-        } else if (typeof jml === "string" || typeof jml === "number") {
-            return document.createTextNode(String(jml));
-        } else {
-            return jml;
-        }
-    } //}}}
-    function jmlToStr(jml) { //{{{
-        if (Array.isArray(jml)) {
-            var children;
-            var classes = jml[0].split(".");
-            var name = classes[0];
-            classes = classes.slice(1);
-            var attr = jml[1];
-            var pos = 1;
-            if (typeof attr === "object" && attr.constructor === Object) {
-                children = jml.slice(2);
-                attr = attr;
-            } else {
-                children = jml.slice(1);
-                attr = {};
-            }
-            if (classes.length) {
-                attr["class"] = classes.join(" ");
-            }
-            var result = "<" + name + Object.keys(attr).map(function(key) {
-                return " " + key + "=\"" + attr[key] + "\"";
-            }).join("");
-
-            if (children.length === 0) {
-                result += "/>";
-            } else {
-                result += ">";
-                result += children.map(jmlToStr).join("");
-                result += "</" + name + ">";
-            }
-
-            return result;
-        } else {
-            return String(jml);
-        }
-    } //}}}
-    //}}}
     // test {{{
     // TestSuite class {{{
     /** @constructor */
@@ -1165,53 +1123,48 @@ qp.dev = {};
     };
     // }}}
     // qp.Client {{{
+    //{{{constructor
     /** @constructor */
-    qp.Client = function(args, opt) {
-        this.args = args;
-        this.opt = opt || {};
+    qp.Client = function(obj) {
+        this.route = obj.route;
+        this.done = obj.done;
+        this.opt = obj.opt || {};
+        this.result = undefined;
     };
+    //}}}
+    //{{{title
+    /**@param {string} str*/
     qp.Client.prototype.title = function(str) {
-        this.title = str;
+        this.opt.title = str;
         return this;
     };
-    /** @param {Array} jsonml */
+    //}}}
+    //{{{jsonml
+    /** @param {*} jsonml */
     qp.Client.prototype.jsonml = function(jsonml) {
-        this.value = ["qp:jsonml", {
+        this.result = ["qp:jsonml", {
             "xmlns:qp": "http://solsort.com/qp"
-        }, jsonml];
-        return this;
+        },
+        jsonml];
+        this.done();
     };
-    qp.Client.prototype.hxml = function(hxml) {
-        this.value = ["qp:jsonml", {
-            "xmlns:qp": "http://solsort.com/qp"
-        }, (new HXML(hxml)).toJsonML()];
-        return this;
-    };
+    //}}}
+    //{{{json
+    /** @param {*} json */
     qp.Client.prototype.json = function(json) {
-        this.value = json;
-        return this;
+        this.result = json;
+        this.done();
     };
+    //}}}
+    //{{{text
     qp.Client.prototype.text = function(str) {
-        this.value = ["qp:text", {
+        this.result = ["qp:text", {
             "xmlns:qp": "http://solsort.com/qp"
         },
         str];
-        return this;
+        this.done();
     };
-    qp.Client.prototype.done = function() {
-        if (qp.platform.nodejs) {
-            if (this.title) {
-                console.log(this.title + ":\n");
-            }
-            if (this.value.constructor === HXML) {
-                console.log(this.value.renderText());
-            } else {
-                console.log(JSON.stringify(this.value, null, "  "));
-            }
-        } else {
-            throw "unimplemented platform";
-        }
-    };
+    //}}}
     // }}}
     //{{{router
     var routes = {
@@ -1219,7 +1172,7 @@ qp.dev = {};
             client.text("Route not found. Available routes:" + Object.keys(routes).join("\n    ")).done();
         }
     };
-    //{{{route
+    //{{{add
     /** add a new route @param {string} path path for the route @param {function(qp.Client)} fn */
     qp.route.add = function(path, fn) {
         routes[path.toLowerCase()] = fn;
@@ -1278,7 +1231,7 @@ qp.dev = {};
     function main() {
         var route = qp.route.systemCurrent();
         var fn = qp.route.lookup((route.path && route.path[0]) || "");
-        var client = new qp.Client(route, {});
+        var client = new qp.Client({route: route, done: function() { console.log(this.result); }});
         fn(client);
     }
     qp.fn.nextTick(main);
@@ -1292,11 +1245,21 @@ qp.dev = {};
                     var path = req.url.slice(1).split(/[.?]/)[0];
                     var fn = qp.route.lookup(path);
                     var client = new qp.Client({
-                        path: path
-                    }, {
-                        platform: "http",
-                        req: req,
-                        res: res
+                        route: { path: path},
+                        done: function() {
+                            var json = this.result;
+                            var result = undefined;
+                            if(json[1] && json[1]["xmlns:qp"] === "http://solsort.com/qp") {
+                                if(json[0] === "qp:jsonml") {
+                                    result = qp.jsonml.toString(["html", ["head", ["title", this.opt.title]], ["body", json[2]]]);
+                                } else {
+                                    result = String(json[2]);
+                                }
+                            } else {
+                                result = require("util")["inspect"](json, false, null);
+                            }
+                            res["end"](result);
+                        }
                     });
                     fn(client);
                 };

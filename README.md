@@ -70,6 +70,7 @@ open `http://localhost:1234/` in browser to visit app
     - general libraries
         - google closure library
         - socket.io
+        - ES5-shim/json
     - platform
         - bootstrap
         - font-awesome
