@@ -1176,7 +1176,7 @@ qp.dev = {};
     // }}}
     //{{{router
     var routes = {
-        " ": function(client) {
+        DEFAULT: function(client) {
             client.text("Route not found. Available routes:" + Object.keys(routes).join("\n    "));
         }
     };
@@ -1188,7 +1188,7 @@ qp.dev = {};
         // extract search/arguments
         var split = qp.str.binSplit(str, "?");
         var str = split[0];
-        var args = split[1];
+        var param = split[1];
 
         // use hash as path instead of url if available
         var split = qp.str.binSplit(str, "#");
@@ -1203,11 +1203,11 @@ qp.dev = {};
         if(split[1]) {
             result.type = split[1];
         }
-        if(args) {
-            result.args = {};
-            args.split("&").forEach(function(str) {
+        if(param) {
+            result.param= {};
+            param.split("&").forEach(function(str) {
                 var split = qp.str.binSplit(str, "=");
-                result.args[split[0]] = split[1];
+                result.param[split[0]] = split[1];
             });
         } 
         return result;
@@ -1222,24 +1222,26 @@ qp.dev = {};
     /** given a path, return the corresponding handling function @param {string} path */
     qp.route.lookup = function(route) {
         var path = route.path || "";
-        path = path.toLowerCase();
-        while (true) {
-            if (routes[path]) {
-                route.args = route.path.slice(path.length);
-                route.path = path;
-                route.fn = routes[path];
-                return route.fn;
-            }
+        path = "/" + path.toLowerCase();
+        while(!routes[path.slice(1)]) {
             var pos = path.lastIndexOf("/");
-            if (pos !== -1) {
-                path = path.slice(0, pos);
+            if(pos === -1) {
+                path = "/DEFAULT";
             } else {
-                route.args = route.path;
-                route.path = " ";
-                route.fn = routes[" "];
-                return route.fn;
+                path = path.slice(0, pos);
             }
         }
+        path = path.slice(1);
+        if(path === "DEFAULT") {
+            route.args = route.path;
+            route.path = undefined;
+        } else {
+            console.log(route.path, path);
+            route.args = route.path.slice(path.length).split("/").filter(qp.fn.id);
+            route.path = path;
+        }
+        route.fn = routes[path];
+        return route.fn;
     }; //}}}
     //{{{systemCurrent
     /** get the current path/arguments/... @return {Object} */
