@@ -385,19 +385,19 @@ qp.dev = {};
     } //}}}
     //{{{toString
     /** @param {*} jsonml */
-    qp.jsonml.toString = function(jml) {
-        if (Array.isArray(jml)) {
+    qp.jsonml.toString = function(jsonml) {
+        if (Array.isArray(jsonml)) {
             var children;
-            var classes = jml[0].split(".");
+            var classes = jsonml[0].split(".");
             var name = classes[0];
             classes = classes.slice(1);
-            var attr = jml[1];
+            var attr = jsonml[1];
             var pos = 1;
             if (typeof attr === "object" && attr.constructor === Object) {
-                children = jml.slice(2);
+                children = jsonml.slice(2);
                 attr = attr;
             } else {
-                children = jml.slice(1);
+                children = jsonml.slice(1);
                 attr = {};
             }
             if (classes.length) {
@@ -417,7 +417,7 @@ qp.dev = {};
 
             return result;
         } else {
-            return String(jml);
+            return String(jsonml);
         }
     } //}}}
     //{{{toDom
@@ -1169,7 +1169,7 @@ qp.dev = {};
     //{{{router
     var routes = {
         " ": function(client) {
-            client.text("Route not found. Available routes:" + Object.keys(routes).join("\n    ")).done();
+            client.text("Route not found. Available routes:" + Object.keys(routes).join("\n    "));
         }
     };
     //{{{add
