@@ -728,6 +728,7 @@ qp.dev = {};
     // }}}
     // HXML {{{
     //{{{constructor
+    /**@constructor*/
     qp.HXML = function(obj, parent) {
         var xml;
         this.parent = parent;
@@ -1168,8 +1169,13 @@ qp.dev = {};
         this.title = str;
         return this;
     };
-    qp.Client.prototype.hxml = function(xml) {
-        this.value = new HXML(xml);
+    /** @param {Array} jsonml */
+    qp.Client.prototype.jsonml = function(jsonml) {
+        this.value = ["qp:jsonml", {"xmlns:qp", "http://solsort.com/qp"}, jsonml];
+        return this;
+    };
+    qp.Client.prototype.hxml = function(hxml) {
+        this.value = ["qp:jsonml", {"xmlns:qp", "http://solsort.com/qp"}, (new HXML(hxml)).toJsonML()];
         return this;
     };
     qp.Client.prototype.json = function(json) {
@@ -1177,7 +1183,7 @@ qp.dev = {};
         return this;
     };
     qp.Client.prototype.text = function(str) {
-        this.hxml([["pre", str]]);
+        this.value = ["qp:text", {"xmlns:qp", "http://solsort.com/qp"}, str];
         return this;
     };
     qp.Client.prototype.done = function() {
@@ -1243,7 +1249,7 @@ qp.dev = {};
         if (qp.platform.html5) {
             var path = (location.hash || location.pathname).slice(1);
             var type = path.split(".")[1];
-            var path = path.split(".")[0];
+            path = path.split(".")[0];
             var result = {path: [path], type: type && [type]};
             location.search.slice(1).split("&").forEach(function(str) {
                 var split = str.split("=");
