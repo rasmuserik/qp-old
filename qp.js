@@ -727,12 +727,89 @@ qp.dev = {};
     }; //}}}
     // }}}
     // HXML {{{
-    qp.HXML = function(xml) {
-        /*
-        if (typeof xml === "string") {}
-        if (Array.isArray(xml)) {}
-        */
+    //{{{constructor
+    qp.HXML = function(obj, parent) {
+        var xml;
+        this.parent = parent;
+
+        // Handle string-encoded xml
+        if (typeof obj === "string") {
+            xml = strToJsonml(obj);
+        }
+
+        // Handle jsonml
+        if (Array.isArray(obj)) {
+            xml = obj;
+            if(typeof xml[0] === "string") {
+                this.tagName = xml[0];
+                xml = xml.slice(1);
+            } else {
+                this.tagName = undefined;
+            }
+
+            if(typeof xml[0] === "object" && xml[1].constructor !== Object) {
+                this.attributes = xml[0];
+                xml = xml.slice(1);
+            } else {
+                this.attributes = {};
+            }
+
+            var self = this;
+            this.childArray = xml.map(function(node) {
+                if(Array.isArray(node)) {
+                    return new qp.HXML(node, self);
+                } else {
+                    return node;
+                }
+            });
+
+        // Handle DOM
+        } else if (obj instanceof Element) {
+            throw "not implemented yet";
+        } else {
+            throw "wrong parameter";
+        }
     };
+    //}}}
+    //{{{toJSON
+    var restoreJsonFromHXML = function(hxml) {
+        throw "not implementd";
+    }
+    qp.HXML.prototype.toJSON = function() {
+        if(this.parent === undefined && this.tagName === "json" && this.attributes["xmlns"] === "http://solsort.com/hxml" && this.childArray.length === 1) {
+            return restoreJsonFromHXML(this.childArray[0]);
+        } else {
+            return [this.tagName, this.attributes].concat(this.childArray.map(function(child) {
+            }));
+        }
+    }
+    //}}}
+    //{{{fromJSON
+    qp.HXML.fromJSON = function(json) {
+        function json2jsonml(json) {
+            if(typeof json === "string") {
+                return ["string", json];
+            } else if(typeof json === "number") {
+                return ["number", json];
+            } else if(json === true) {
+                return ["true"];
+            } else if(json === false) {
+                return ["false"];
+            } else if(json === null) {
+                return ["null"];
+            } else if(Array.isArray(json)) {
+                return ["array"].concat(json.map(json2jsonml));
+            } else {
+                var result = ["object"];
+                for(var key in json) {
+                    result.push(["member", {key: key}, json2jsonml(json[key])]);
+                }
+                return result;
+            }
+        }
+        return new HXML(["json", {xmlns: "http://solsort.com/hxml"}, json2jsonml(json)]);
+    };
+    //}}}
     var xmlEntities = { //{{{
         lt: "<",
         gt: ">",
@@ -1087,16 +1164,32 @@ qp.dev = {};
         this.args = args;
         this.opt = opt || {};
     };
+    qp.Client.prototype.title = function(str) {
+        this.title = str;
+        return this;
+    };
+    qp.Client.prototype.hxml = function(xml) {
+        this.value = new HXML(xml);
+        return this;
+    };
+    qp.Client.prototype.json = function(json) {
+        this.value = json;
+        return this;
+    };
     qp.Client.prototype.text = function(str) {
-        var prev = this.resultText || "";
-        this.resultText = prev + str;
+        this.hxml([["pre", str]]);
         return this;
     };
     qp.Client.prototype.done = function() {
-        if (this.opt.platform === "http") {
-            this.opt.res.end(this.resultText);
-        } else if (qp.platform.nodejs) {
-            console.log(this.resultText);
+        if (qp.platform.nodejs) {
+            if(this.title) {
+                console.log(this.title + ":\n");
+            }
+            if(this.value.constructor === HXML) {
+                console.log(this.value.renderText());
+            } else {
+                console.log(JSON.stringify(this.value, null, "  "));
+            }
         } else {
             throw "unimplemented platform";
         }

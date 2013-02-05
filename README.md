@@ -79,10 +79,10 @@ open `http://localhost:1234/` in browser to visit app
         - google closure compiler
 - primary platforms/targets
     - node.js-command-line 
-    - node.js-rpc 
+    - node.js-static-server 
     - html5-web-app 
+    - node.js-rpc 
     - secondary platforms
-        - node.js-static-server 
         - phonegap-app 
         - firefox-jetpack-addon/marketplace 
         - gjs 
