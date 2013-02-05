@@ -36,19 +36,19 @@ qp.dev = {};
     // }}}
     // setup {{{
     if (typeof BUILTIN_ROUTES !== "undefined" ? BUILTIN_ROUTES : true) {
-    if (qp.platform.nodejs) {
-        global["CLOSURE_BASE_PATH"] = __dirname + "/node_modules/qp-external/closure-library/closure/goog/"
-        require("closure")["Closure"](global);
-    }
-    if (typeof module !== "undefined") {
-        module["exports"] = function(moduleGlobal) {
-            if (qp.platform.nodejs) {
-                moduleGlobal["CLOSURE_BASE_PATH"] = global["CLOSURE_BASE_PATH"];
-                require("closure")["Closure"](moduleGlobal);
-            }
-            moduleGlobal.qp = qp;
+        if (qp.platform.nodejs) {
+            global["CLOSURE_BASE_PATH"] = __dirname + "/node_modules/qp-external/closure-library/closure/goog/"
+            require("closure")["Closure"](global);
         }
-    }
+        if (typeof module !== "undefined") {
+            module["exports"] = function(moduleGlobal) {
+                if (qp.platform.nodejs) {
+                    moduleGlobal["CLOSURE_BASE_PATH"] = global["CLOSURE_BASE_PATH"];
+                    require("closure")["Closure"](moduleGlobal);
+                }
+                moduleGlobal.qp = qp;
+            }
+        }
     }
     //}}}
     if (qp.platform.nodejs) {
@@ -71,7 +71,7 @@ qp.dev = {};
     //{{{get
     qp.obj.get = function(obj, key, defaultVal) {
         var result = obj[key];
-        if(result === undefined) {
+        if (result === undefined) {
             result = defaultVal;
         }
         return result;
@@ -80,7 +80,7 @@ qp.dev = {};
     //{{{listAdd
     qp.obj.listAdd = function(obj, key, val) {
         var arr = obj[key];
-        if(Array.isArray(arr)) {
+        if (Array.isArray(arr)) {
             arr.push(val);
         } else {
             obj[key] = [val];
@@ -741,14 +741,14 @@ qp.dev = {};
         // Handle jsonml
         if (Array.isArray(obj)) {
             xml = obj;
-            if(typeof xml[0] === "string") {
+            if (typeof xml[0] === "string") {
                 this.tagName = xml[0];
                 xml = xml.slice(1);
             } else {
                 this.tagName = undefined;
             }
 
-            if(typeof xml[0] === "object" && xml[1].constructor !== Object) {
+            if (typeof xml[0] === "object" && xml[1].constructor !== Object) {
                 this.attributes = xml[0];
                 xml = xml.slice(1);
             } else {
@@ -757,14 +757,14 @@ qp.dev = {};
 
             var self = this;
             this.childArray = xml.map(function(node) {
-                if(Array.isArray(node)) {
+                if (Array.isArray(node)) {
                     return new qp.HXML(node, self);
                 } else {
                     return node;
                 }
             });
 
-        // Handle DOM
+            // Handle DOM
         } else if (obj instanceof Element) {
             throw "not implemented yet";
         } else {
@@ -777,38 +777,43 @@ qp.dev = {};
         throw "not implementd";
     }
     qp.HXML.prototype.toJSON = function() {
-        if(this.parent === undefined && this.tagName === "json" && this.attributes["xmlns"] === "http://solsort.com/hxml" && this.childArray.length === 1) {
+        if (this.parent === undefined && this.tagName === "json" && this.attributes["xmlns"] === "http://solsort.com/hxml" && this.childArray.length === 1) {
             return restoreJsonFromHXML(this.childArray[0]);
         } else {
-            return [this.tagName, this.attributes].concat(this.childArray.map(function(child) {
-            }));
+            return [this.tagName, this.attributes].concat(this.childArray.map(function(child) {}));
         }
     }
     //}}}
     //{{{fromJSON
     qp.HXML.fromJSON = function(json) {
         function json2jsonml(json) {
-            if(typeof json === "string") {
+            if (typeof json === "string") {
                 return ["string", json];
-            } else if(typeof json === "number") {
+            } else if (typeof json === "number") {
                 return ["number", json];
-            } else if(json === true) {
+            } else if (json === true) {
                 return ["true"];
-            } else if(json === false) {
+            } else if (json === false) {
                 return ["false"];
-            } else if(json === null) {
+            } else if (json === null) {
                 return ["null"];
-            } else if(Array.isArray(json)) {
+            } else if (Array.isArray(json)) {
                 return ["array"].concat(json.map(json2jsonml));
             } else {
                 var result = ["object"];
-                for(var key in json) {
-                    result.push(["member", {key: key}, json2jsonml(json[key])]);
+                for (var key in json) {
+                    result.push(["member", {
+                        key: key
+                    },
+                    json2jsonml(json[key])]);
                 }
                 return result;
             }
         }
-        return new HXML(["json", {xmlns: "http://solsort.com/hxml"}, json2jsonml(json)]);
+        return new HXML(["json", {
+            xmlns: "http://solsort.com/hxml"
+        },
+        json2jsonml(json)]);
     };
     //}}}
     var xmlEntities = { //{{{
@@ -1171,11 +1176,16 @@ qp.dev = {};
     };
     /** @param {Array} jsonml */
     qp.Client.prototype.jsonml = function(jsonml) {
-        this.value = ["qp:jsonml", {"xmlns:qp", "http://solsort.com/qp"}, jsonml];
+        this.value = ["qp:jsonml", {
+            "xmlns:qp", "http://solsort.com/qp"
+        },
+        jsonml];
         return this;
     };
     qp.Client.prototype.hxml = function(hxml) {
-        this.value = ["qp:jsonml", {"xmlns:qp", "http://solsort.com/qp"}, (new HXML(hxml)).toJsonML()];
+        this.value = ["qp:jsonml", {
+            "xmlns:qp", "http://solsort.com/qp"
+        }, (new HXML(hxml)).toJsonML()];
         return this;
     };
     qp.Client.prototype.json = function(json) {
@@ -1183,15 +1193,18 @@ qp.dev = {};
         return this;
     };
     qp.Client.prototype.text = function(str) {
-        this.value = ["qp:text", {"xmlns:qp", "http://solsort.com/qp"}, str];
+        this.value = ["qp:text", {
+            "xmlns:qp", "http://solsort.com/qp"
+        },
+        str];
         return this;
     };
     qp.Client.prototype.done = function() {
         if (qp.platform.nodejs) {
-            if(this.title) {
+            if (this.title) {
                 console.log(this.title + ":\n");
             }
-            if(this.value.constructor === HXML) {
+            if (this.value.constructor === HXML) {
                 console.log(this.value.renderText());
             } else {
                 console.log(JSON.stringify(this.value, null, "  "));
@@ -1235,10 +1248,10 @@ qp.dev = {};
             var argv = process["argv"];
             var key = "path";
             var result = {};
-            for(var i = 2; i < argv.length; ++i) {
-                if(argv[i][0] === "-") {
+            for (var i = 2; i < argv.length; ++i) {
+                if (argv[i][0] === "-") {
                     key = argv[i].replace(/^--?/, "");
-                    if(!result[key]) {
+                    if (!result[key]) {
                         result[key] = [];
                     }
                 } else {
@@ -1250,7 +1263,10 @@ qp.dev = {};
             var path = (location.hash || location.pathname).slice(1);
             var type = path.split(".")[1];
             path = path.split(".")[0];
-            var result = {path: [path], type: type && [type]};
+            var result = {
+                path: [path],
+                type: type && [type]
+            };
             location.search.slice(1).split("&").forEach(function(str) {
                 var split = str.split("=");
                 param[split[0]] = [split[1]];
@@ -1276,7 +1292,9 @@ qp.dev = {};
                 var devServer = function(req, res) {
                     var path = req.url.slice(1).split(/[.?]/)[0];
                     var fn = qp.route.lookup(path);
-                    var client = new qp.Client({path:path}, {
+                    var client = new qp.Client({
+                        path: path
+                    }, {
                         platform: "http",
                         req: req,
                         res: res
