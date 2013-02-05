@@ -1177,14 +1177,13 @@ qp.dev = {};
     /** @param {Array} jsonml */
     qp.Client.prototype.jsonml = function(jsonml) {
         this.value = ["qp:jsonml", {
-            "xmlns:qp", "http://solsort.com/qp"
-        },
-        jsonml];
+            "xmlns:qp": "http://solsort.com/qp"
+        }, jsonml];
         return this;
     };
     qp.Client.prototype.hxml = function(hxml) {
         this.value = ["qp:jsonml", {
-            "xmlns:qp", "http://solsort.com/qp"
+            "xmlns:qp": "http://solsort.com/qp"
         }, (new HXML(hxml)).toJsonML()];
         return this;
     };
@@ -1194,7 +1193,7 @@ qp.dev = {};
     };
     qp.Client.prototype.text = function(str) {
         this.value = ["qp:text", {
-            "xmlns:qp", "http://solsort.com/qp"
+            "xmlns:qp": "http://solsort.com/qp"
         },
         str];
         return this;
