@@ -15,7 +15,6 @@
     "dependencies": {
         "socket.io": "*",
         "closure": "*",
-        "closure-compiler": "git://github.com/rasmuserik/node-closure.git#master",
         "qp-external": "git://github.com/rasmuserik/qp-external.git#master",
         "jsdoc3": "git://github.com/jsdoc3/jsdoc.git#master"
     },

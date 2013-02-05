@@ -37,7 +37,7 @@ qp.dev = {};
     // setup {{{
     if (typeof BUILTIN_ROUTES !== "undefined" ? BUILTIN_ROUTES : true) {
     if (qp.platform.nodejs) {
-        global["CLOSURE_BASE_PATH"] = __dirname + "/external/google-closure-library/closure/goog/"
+        global["CLOSURE_BASE_PATH"] = __dirname + "/node_modules/qp-external/closure-library/closure/goog/"
         require("closure")["Closure"](global);
     }
     if (typeof module !== "undefined") {
@@ -1236,13 +1236,14 @@ qp.dev = {};
                 }
 
                 function runClosure(platform) {
-                    var cmd = __dirname + "/external/google-closure-library/closure/bin/calcdeps.py";
+                    var qp_external = __dirname + "/node_modules/qp-external";
+                    var cmd = qp_external + "/closure-library/closure/bin/calcdeps.py";
                     cmd += " -i " + __dirname + "/build/config-" + platform + ".js";
                     cmd += " -i " + destPath + "/preprocessed-qp.js";
                     cmd += " -i " + destPath + "/preprocessed.js";
-                    cmd += " -d " + __dirname + "/external/google-closure-library";
+                    cmd += " -d " + qp_external + "/closure-library";
                     cmd += " -o compiled";
-                    cmd += " -c " + __dirname + "/node_modules/closure-compiler/lib/vendor/compiler.jar";
+                    cmd += " -c " + qp_external + "/closure-compiler/compiler.jar";
                     cmd += " --output_file " + destPath + "/" + platform + ".js";
                     cmd += " -f --use_types_for_optimization";
                     cmd += " -f --summary_detail_level -f 3";
