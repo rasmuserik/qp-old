@@ -236,7 +236,7 @@ qp.dev = {};
     }; //}}}
     //{{{fromString
     /** @param {string} str */
-    qp.jsonml.fromString = function(str) { 
+    qp.jsonml.fromString = function(str) {
         var errors = [];
 
         function jsonmlError(str) {
@@ -385,7 +385,7 @@ qp.dev = {};
     } //}}}
     //{{{toString
     /** @param {*} jsonml */
-    qp.jsonml.toString = function(jml) { 
+    qp.jsonml.toString = function(jml) {
         if (Array.isArray(jml)) {
             var children;
             var classes = jml[0].split(".");
@@ -456,16 +456,16 @@ qp.dev = {};
     } //}}}
     //{{{isCanonical
     qp.jsonml.isCanonical = function(jsonml) {
-        if(Array.isArray(jsonml)) {
-            if(typeof jsonml[0] !== "string" || !qp.obj.isObject(jsonml[1])) {
+        if (Array.isArray(jsonml)) {
+            if (typeof jsonml[0] !== "string" || !qp.obj.isObject(jsonml[1])) {
                 return false;
             }
-            for(var i = 2; i < jsonml.length; ++i) {
-                if(!qp.jsonml.isCanonical(jsonml[i])) {
+            for (var i = 2; i < jsonml.length; ++i) {
+                if (!qp.jsonml.isCanonical(jsonml[i])) {
                     return false;
                 }
             }
-        } else if(typeof jsonml !== "string") {
+        } else if (typeof jsonml !== "string") {
             return false;
         }
         return true;
@@ -473,8 +473,8 @@ qp.dev = {};
     //}}}
     //{{{canonical
     qp.jsonml.canonical = function(jsonml) {
-        if(Array.isArray(jsonml)) {
-            if(!qp.obj.isObject(jsonml[1])) {
+        if (Array.isArray(jsonml)) {
+            if (!qp.obj.isObject(jsonml[1])) {
                 jsonml = [jsonml[0], {}].concat(jsonml.slice(1));
             }
             return jsonml.map(qp.jsonml.canonical);
@@ -491,7 +491,7 @@ qp.dev = {};
             var result = jsonml.map(qp.jsonml.filterWhitespace).filter(function(s) {
                 return s !== "";
             });
-            if(result.length === 2 && len > 2) {
+            if (result.length === 2 && len > 2) {
                 result.push("");
             }
             return result;
@@ -1122,7 +1122,7 @@ qp.dev = {};
         test.done();
     };
     // }}}
-    // qp.Client {{{
+    // Client {{{
     //{{{constructor
     /** @constructor */
     qp.Client = function(obj) {
@@ -1231,122 +1231,132 @@ qp.dev = {};
     function main() {
         var route = qp.route.systemCurrent();
         var fn = qp.route.lookup((route.path && route.path[0]) || "");
-        var client = new qp.Client({route: route, done: function() { console.log(this.result); }});
+        var client = new qp.Client({
+            route: route,
+            done: function() {
+                console.log(this.result);
+            }
+        });
         fn(client);
     }
     qp.fn.nextTick(main);
     //}}}
     // builtin routes {{{
-    if (typeof BUILTIN_ROUTES !== "undefined" ? BUILTIN_ROUTES : true) {
-        // dev-server {{{
-        if (qp.platform.nodejs) {
-            var startDevServer = function(client) {
-                var devServer = function(req, res) {
-                    var path = req.url.slice(1).split(/[.?]/)[0];
-                    var fn = qp.route.lookup(path);
-                    var client = new qp.Client({
-                        route: { path: path},
-                        done: function() {
-                            var json = this.result;
-                            var result = undefined;
-                            if(json[1] && json[1]["xmlns:qp"] === "http://solsort.com/qp") {
-                                if(json[0] === "qp:jsonml") {
-                                    result = qp.jsonml.toString(["html", ["head", ["title", this.opt.title]], ["body", json[2]]]);
-                                } else {
-                                    result = String(json[2]);
-                                }
-                            } else {
-                                result = require("util")["inspect"](json, false, null);
-                            }
-                            res["end"](result);
+    // dev-server {{{
+    qp.route.devServer = function(client) {
+        var server = function(req, res) {
+            var path = req.url.slice(1).split(/[.?]/)[0];
+            var fn = qp.route.lookup(path);
+            var client = new qp.Client({
+                route: {
+                    path: path
+                },
+                done: function() {
+                    var json = this.result;
+                    var result = undefined;
+                    if (json[1] && json[1]["xmlns:qp"] === "http://solsort.com/qp") {
+                        if (json[0] === "qp:jsonml") {
+                            result = qp.jsonml.toString(["html", ["head", ["title", this.opt.title]],
+                                ["body", json[2]]
+                            ]);
+                        } else {
+                            result = String(json[2]);
                         }
-                    });
-                    fn(client);
-                };
-                var app = require("http")["createServer"](devServer);
-                var io = require("socket.io")["listen"](app);
-                app["listen"](qp.port, qp.host, function() {
-                    console.log("dev-server running on", qp.host + ":" + qp.port);
-                });
-            };
-            qp.route.add("dev-server", startDevServer);
-        } //}}}
-        // build {{{
-        if (qp.platform.nodejs) {
-            //{{{build function
-            var build = function(appSource) {
-                var platforms = ["node", "html5"];
-                for (var i = 0; i < platforms.length; ++i) {
-                    var platform = platforms[i];
-                    var sourcePath = appSource.replace(/[^\/]*$/, "");
-                    var destPath = sourcePath + "build";
-                    qp.sys.mkdir(destPath);
-                    preprocessFiles(platform, runClosure);
+                    } else {
+                        result = require("util")["inspect"](json, false, null);
+                    }
+                    res["end"](result);
                 }
-
-                function preprocessFiles(platform, callback) {
-                    var count = 2;
-
-                    function fileDone() {
-                        --count;
-                        if (count === 0) {
-                            callback(platform);
-                        }
-                    };
-
-                    // read the app source code
-                    fs["readFile"](appSource, "utf8", function(err, data) {
-                        if (err) throw err;
-                        data = data.replace(/require\s*\(\s*['"](\.\/)?qp['"]\s*\)\s*\(\s*global\s*\)/g, "");
-                        fs["writeFile"](destPath + "/preprocessed.js", data, function(err) {
-                            if (err) throw err;
-                            fileDone();
-                        });
-                    });
-                    // read the qp-library source code
-                    fs["readFile"](__filename, "utf8", function(err, data) {
-                        if (err) throw err;
-                        data = data.replace(/moduleGlobal.qp\s*=\s*qp\s*;?/g, "");
-                        fs["writeFile"](destPath + "/preprocessed-qp.js", data, function(err) {
-                            if (err) throw err;
-                            fileDone();
-                        });
-                    });
-                }
-
-                function runClosure(platform) {
-                    var qp_external = __dirname + "/node_modules/qp-external";
-                    var cmd = qp_external + "/closure-library/closure/bin/calcdeps.py";
-                    cmd += " -i " + __dirname + "/build/config-" + platform + ".js";
-                    cmd += " -i " + destPath + "/preprocessed-qp.js";
-                    cmd += " -i " + destPath + "/preprocessed.js";
-                    cmd += " -d " + qp_external + "/closure-library";
-                    cmd += " -o compiled";
-                    cmd += " -c " + qp_external + "/closure-compiler/compiler.jar";
-                    cmd += " --output_file " + destPath + "/" + platform + ".js";
-                    cmd += " -f --use_types_for_optimization";
-                    cmd += " -f --summary_detail_level -f 3";
-                    cmd += " -f --warning_level -f VERBOSE";
-                    cmd += " -f --jscomp_off -f checkVars";
-                    cmd += " -f --compilation_level -f ADVANCED_OPTIMIZATIONS";
-                    qp.sys.exec(cmd, function(err, stderr, stdout) {
-                        if (err) throw err;
-                        console.log(stderr, stdout);
-                    });
-                }
-            }
-            //}}}
-            var buildApp = function(client) { //{{{
-                //concatSource(function() {});
-                build(process["argv"][1]);
-                qp.sys.exec(__dirname + "/node_modules/jsdoc/jsdoc -d doc " + __filename, function(err) {
-                    if (err) throw err;
-                });
-            }; //}}}
-            qp.route.add("build", buildApp);
+            });
+            fn(client);
+        };
+        var app = require("http")["createServer"](server);
+        var io = require("socket.io")["listen"](app);
+        app["listen"](qp.port, qp.host, function() {
+            console.log("dev-server running on", qp.host + ":" + qp.port);
+        });
+    };
+    //}}}
+    //{{{build
+    qp.route.build = function(client) {
+        var appSource = process["argv"][1];
+        var platforms = ["node", "html5"];
+        for (var i = 0; i < platforms.length; ++i) {
+            var platform = platforms[i];
+            var sourcePath = appSource.replace(/[^\/]*$/, "");
+            var destPath = sourcePath + "build";
+            qp.sys.mkdir(destPath);
+            preprocessFiles(platform, runClosure);
         }
-        // }}}
+
+        function preprocessFiles(platform, callback) {
+            var count = 2;
+
+            function fileDone() {
+                --count;
+                if (count === 0) {
+                    callback(platform);
+                }
+            };
+
+            // read the app source code
+            fs["readFile"](appSource, "utf8", function(err, data) {
+                if (err) throw err;
+                data = data.replace(/require\s*\(\s*['"](\.\/)?qp['"]\s*\)\s*\(\s*global\s*\)/g, "");
+                fs["writeFile"](destPath + "/preprocessed.js", data, function(err) {
+                    if (err) throw err;
+                    fileDone();
+                });
+            });
+            // read the qp-library source code
+            fs["readFile"](__filename, "utf8", function(err, data) {
+                if (err) throw err;
+                data = data.replace(/moduleGlobal.qp\s*=\s*qp\s*;?/g, "");
+                fs["writeFile"](destPath + "/preprocessed-qp.js", data, function(err) {
+                    if (err) throw err;
+                    fileDone();
+                });
+            });
+        }
+
+        function runClosure(platform) {
+            var qp_external = __dirname + "/node_modules/qp-external";
+            var cmd = qp_external + "/closure-library/closure/bin/calcdeps.py";
+            cmd += " -i " + __dirname + "/build/config-" + platform + ".js";
+            cmd += " -i " + destPath + "/preprocessed-qp.js";
+            cmd += " -i " + destPath + "/preprocessed.js";
+            cmd += " -d " + qp_external + "/closure-library";
+            cmd += " -o compiled";
+            cmd += " -c " + qp_external + "/closure-compiler/compiler.jar";
+            cmd += " --output_file " + destPath + "/" + platform + ".js";
+            cmd += " -f --use_types_for_optimization";
+            cmd += " -f --summary_detail_level -f 3";
+            cmd += " -f --warning_level -f VERBOSE";
+            cmd += " -f --jscomp_off -f checkVars";
+            cmd += " -f --compilation_level -f ADVANCED_OPTIMIZATIONS";
+            qp.sys.exec(cmd, function(err, stderr, stdout) {
+                if (err) throw err;
+                console.log(stderr, stdout);
+            });
+        }
+    };
+    //}}}
+    //{{{jsdoc
+    qp.route.jsdoc = function(client) {
+        qp.sys.exec(__dirname + "/node_modules/jsdoc/jsdoc -d doc " + __filename, function(err) {
+            if (err) throw err;
+        });
+    };
+    //}}}
+    //{{{register default routes
+    if (typeof BUILTIN_ROUTES !== "undefined" ? BUILTIN_ROUTES : true) {
+        if (qp.platform.nodejs) {
+            qp.route.add("jsdoc", qp.route.jsdoc);
+            qp.route.add("build", qp.route.build);
+            qp.route.add("dev-server", qp.route.devServer);
+        }
     }
+    //}}}
     // }}}
     //}}}
     // css/dom-processing-monad{{{
