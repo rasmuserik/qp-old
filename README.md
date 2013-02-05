@@ -66,4 +66,4 @@ open `http://localhost:1234/` in browser to visit app
 - Toolbox
     - utilities for running: js-beautify, closure-compiler, js-hint, travis-ci, testling, npm-packaging building
 - Platforms/targets
-    - node.js node.js-static-server html5-web-app phonegap-app firefox-jetpack-addon/marketplace gjs winjs chrome-extension/web-store facebook/html5/distribution chrome-apps rhino/javascript-app
+    - node.js-command-line node.js-static-server node.js-rpc html5-web-app phonegap-app firefox-jetpack-addon/marketplace gjs winjs chrome-extension/web-store facebook/html5/distribution chrome-apps rhino/javascript-app
