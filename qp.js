@@ -39,7 +39,7 @@ qp.dev = {};
     // setup {{{
     if (typeof BUILTIN_ROUTES !== "undefined" ? BUILTIN_ROUTES : true) {
         if (qp.platform.nodejs) {
-            global["CLOSURE_BASE_PATH"] = __dirname + "/node_modules/qp-external/closure-library/closure/goog/"
+            global["CLOSURE_BASE_PATH"] = __dirname + "/node_modules/qp-external/closure-library/closure/goog/";
             require("closure")["Closure"](global);
         }
         if (typeof module !== "undefined") {
@@ -49,7 +49,7 @@ qp.dev = {};
                     require("closure")["Closure"](moduleGlobal);
                 }
                 moduleGlobal.qp = qp;
-            }
+            };
         }
     }
     //}}}
@@ -59,7 +59,7 @@ qp.dev = {};
     //{{{obj
     //{{{isObject
     qp.obj.isObject = function(obj) {
-        return typeof obj === object && obj !== null && obj.constructor === Object;
+        return typeof obj === "object" && obj !== null && obj.constructor === Object;
     };
     //}}}
     //{{{extend
@@ -82,7 +82,7 @@ qp.dev = {};
             result = defaultVal;
         }
         return result;
-    }
+    };
     //}}}
     //{{{listAdd
     qp.obj.listAdd = function(obj, key, val) {
@@ -92,7 +92,7 @@ qp.dev = {};
         } else {
             obj[key] = [val];
         }
-    }
+    };
     //}}}
     //{{{map
     /** map a function across the values of an object, and return a new object with the resulting values
@@ -140,14 +140,14 @@ qp.dev = {};
             result.push(obj[key]);
         }
         return result;
-    } //}}}
+    }; //}}}
     //}}}
     //{{{arr
     //listpp{{{
     /** Prettyprint a list
-     * @param {Array|string} list list to prettyprint
-     * @param {string=} indent string to use as indent (some spaces or tabs)
-     * @return {string} text representation of indented list
+     * @param {Array|string} list list to prettyprint.
+     * @param {string=} indent string to use as indent (some spaces or tabs).
+     * @return {string} text representation of indented list.
      */
     qp.arr.listpp = function(list, indent) {
         indent = indent || "  ";
@@ -186,7 +186,7 @@ qp.dev = {};
     }; //}}}
     //shuffle{{{
     /** Put an array in random order (in-place)
-     * @param {Array} arr the array to shuffle
+     * @param {Array} arr the array to shuffle.
      * @return {Array}
      */
     qp.arr.shuffle = function(arr) {
@@ -218,7 +218,7 @@ qp.dev = {};
         var cb = function() {
             if (count === 0) {
                 done();
-            }--count;
+            } --count;
         };
         cb();
         arr.forEach(function(key) {
@@ -382,7 +382,7 @@ qp.dev = {};
             console.log(errors);
         }
         return tag;
-    } //}}}
+    }; //}}}
     //{{{toString
     /** @param {*} jsonml */
     qp.jsonml.toString = function(jsonml) {
@@ -419,7 +419,7 @@ qp.dev = {};
         } else {
             return String(jsonml);
         }
-    } //}}}
+    }; //}}}
     //{{{toDom
     qp.jsonml.toDom = function(jsonml) {
         if (Array.isArray(jsonml)) {
@@ -444,8 +444,8 @@ qp.dev = {};
             }
             while (pos < jsonml.length) {
                 if (jsonml[pos]) {
-                    elem.appendChild(jsonmlToDom(jsonml[pos]));
-                }++pos;
+                    elem.appendChild(qp.jsonml.toDom(jsonml[pos]));
+                } ++pos;
             }
             return elem;
         } else if (typeof jsonml === "string" || typeof jsonml === "number") {
@@ -453,7 +453,7 @@ qp.dev = {};
         } else {
             return jsonml;
         }
-    } //}}}
+    }; //}}}
     //{{{isCanonical
     qp.jsonml.isCanonical = function(jsonml) {
         if (Array.isArray(jsonml)) {
@@ -487,7 +487,7 @@ qp.dev = {};
         if (typeof jsonml === "string") {
             return jsonml.trim();
         } else if (Array.isArray(jsonml)) {
-            var len = jsonml.length
+            var len = jsonml.length;
             var result = jsonml.map(qp.jsonml.filterWhitespace).filter(function(s) {
                 return s !== "";
             });
@@ -498,12 +498,12 @@ qp.dev = {};
         } else {
             return jsonml;
         }
-    } //}}}
+    }; //}}}
     //}}}
     //{{{set
     //fromArray{{{
     /** Convert a list into an object with list elements as keys, and true as value. Useful for set-like operations.
-     * @param {Array.<string>} arr 
+     * @param {Array.<string>} arr
      * @return {Object.<string,boolean>}
      */
     qp.set.fromArray = function(arr) {
@@ -525,7 +525,7 @@ qp.dev = {};
     // runonce {{{
     /** enforce a function only runs once
      * @param {function(...[*])} fn
-     * @return {function(...[*])} a new function with same type as the original function, but only executes the original function once, and otherwise just returns undefined
+     * @return {function(...[*])} a new function with same type as the original function, but only executes the original function once, and otherwise just returns undefined.
      */
     qp.fn.runonce = function(fn) {
         var execute = true;
@@ -538,8 +538,8 @@ qp.dev = {};
     }; //}}}
     //throttledFn{{{
     /** make sure a given function is called not called to often
-     * @param {function()} fn the function to be executed
-     * @param {number=} delay how long (in ms.) should the shortest interval between function calls be. defaults 5000ms
+     * @param {function()} fn the function to be executed.
+     * @param {number=} delay how long (in ms.) should the shortest interval between function calls be. defaults 5000ms.
      * @return {function(function()=): undefined}
      */
     qp.fn.throttledFn = function(fn, delay) {
@@ -547,7 +547,7 @@ qp.dev = {};
         var lastRun = 0;
         var scheduled = false;
         var callbacks = [];
-        /** 
+        /**
          * @param {function()=} callback
          * @return {undefined}
          */
@@ -571,7 +571,7 @@ qp.dev = {};
             };
             scheduled = true;
             setTimeout(run, Math.max(0, delay - (Date.now() - lastRun)));
-        };
+        }
         return newFn;
     }; //}}}
     //nextTick{{{
@@ -588,9 +588,9 @@ qp.dev = {};
     }; //}}}
     //trycatch{{{
     /** Functional exception handling
-     * @param {function()} fn1 function to call
-     * @param {function(*)} fn2 exception handling function, called if fn1 throw. The parameter will be execption thrown
-     * @return result from fn1 or fn2
+     * @param {function()} fn1 function to call.
+     * @param {function(*)} fn2 exception handling function, called if fn1 throw. The parameter will be execption thrown.
+     * @return result from fn1 or fn2.
      */
     qp.fn.trycatch = function(fn1, fn2) {
         try {
@@ -658,8 +658,8 @@ qp.dev = {};
     }; //}}}
     // strStartsWith {{{
     /** check if a string has another string as a prefix
-     * @param {string} str the string to check
-     * @param {string} prefix the prefix
+     * @param {string} str the string to check.
+     * @param {string} prefix the prefix.
      * @return {boolean}
      */
     qp.str.startsWith = function(str, prefix) {
@@ -668,7 +668,7 @@ qp.dev = {};
     //}}}
     //{{{sys
     //exec{{{
-    /** Run a shell commend 
+    /** Run a shell commend
      * @param {string} cmd
      * @param {function(...[*])} callback
      */
@@ -719,7 +719,7 @@ qp.dev = {};
     // saveJSON {{{
     /** save json to a file
      * @param {string} filename
-     * @param {*} content must be json-able
+     * @param {*} content must be json-able.
      * @param {function(*)=} callback
      */
     qp.sys.saveJSON = function(filename, content, callback) {
@@ -729,7 +729,7 @@ qp.dev = {};
     //loadJSONSync{{{
     /** Load and parse json from a file
      * @param {string} filename
-     * @param {*} defaultVal default value, or a function that yields the default value. This will be returned/called if the file cannot be loaded/parsed to json
+     * @param {*} defaultVal default value, or a function that yields the default value. This will be returned/called if the file cannot be loaded/parsed to json.
      */
     qp.sys.loadJSONSync = function(filename, defaultVal) {
         if (!defaultVal) {
@@ -782,7 +782,7 @@ qp.dev = {};
     //}}}
     // qp.V2d {{{
     /** simple 2d vector
-     * @constructor 
+     * @constructor
      * @param {number} x
      * @param {number} y
      */
@@ -1187,15 +1187,15 @@ qp.dev = {};
 
         // extract search/arguments
         var split = qp.str.binSplit(str, "?");
-        var str = split[0];
+        str = split[0];
         var param = split[1];
 
         // use hash as path instead of url if available
-        var split = qp.str.binSplit(str, "#");
+        split = qp.str.binSplit(str, "#");
         str = split[1] || split[0];
 
         // extract path and filetype
-        var split = qp.str.binSplit(str, ".");
+        split = qp.str.binSplit(str, ".");
 
         // create result object
         var result = {};
@@ -1211,10 +1211,10 @@ qp.dev = {};
             });
         }
         return result;
-    }
+    };
     //}}}
     //{{{add
-    /** add a new route @param {string} path path for the route @param {function(qp.Client)} fn */
+    /** add a new route @param {string} path path for the route. @param {function(qp.Client)} fn */
     qp.route.add = function(path, fn) {
         routes[path.toLowerCase()] = fn;
     }; //}}}
@@ -1246,11 +1246,12 @@ qp.dev = {};
     //{{{systemCurrent
     /** get the current path/arguments/... @return {Object} */
     qp.route.systemCurrent = function() {
+        var result;
         if (qp.platform.nodejs) {
             var argv = process["argv"];
             return {
                 path: argv[2] || ""
-            }
+            };
             /*
             var key = "path";
             var result = {};
@@ -1270,14 +1271,16 @@ qp.dev = {};
             var path = (location.hash || location.pathname).slice(1);
             var type = path.split(".")[1];
             path = path.split(".")[0];
-            var result = {
+            result = {
                 path: [path],
                 type: type && [type]
             };
+            /*
             location.search.slice(1).split("&").forEach(function(str) {
                 var split = str.split("=");
                 param[split[0]] = [split[1]];
             });
+            */
         }
         return result;
     };
@@ -1310,7 +1313,7 @@ qp.dev = {};
                 route: route,
                 done: function() {
                     var json = this.result;
-                    var result = undefined;
+                    var result;
                     if (json[1] && json[1]["xmlns:qp"] === "http://solsort.com/qp") {
                         if (json[0] === "qp:jsonml") {
                             result = qp.jsonml.toString(["html", ["head", ["title", this.opt.title]],
@@ -1354,7 +1357,7 @@ qp.dev = {};
                 if (count === 0) {
                     callback(platform);
                 }
-            };
+            }
 
             // read the app source code
             fs["readFile"](appSource, "utf8", function(err, data) {
