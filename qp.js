@@ -218,7 +218,8 @@ qp.dev = {};
         var cb = function() {
             if (count === 0) {
                 done();
-            } --count;
+            }
+            count = count - 1;
         };
         cb();
         arr.forEach(function(key) {
@@ -445,7 +446,8 @@ qp.dev = {};
             while (pos < jsonml.length) {
                 if (jsonml[pos]) {
                     elem.appendChild(qp.jsonml.toDom(jsonml[pos]));
-                } ++pos;
+                }
+                pos = pos + 1;
             }
             return elem;
         } else if (typeof jsonml === "string" || typeof jsonml === "number") {
