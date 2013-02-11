@@ -1293,7 +1293,12 @@ if(typeof global === "undefined") global = this;
         var doneFn;
         if(qp.platform.html5) {
             doneFn = function() {
-                console.log(this.result);
+                var result = this.result;
+                if(result.qp_jsonml) {
+                    document.body.innerHTML = qp.jsonml.toString(result.qp_jsonml);
+                } else {
+                    console.log(result);
+                }
             }
         } else {
             doneFn = function() {
