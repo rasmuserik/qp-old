@@ -1,13 +1,10 @@
 require("./qp")(global);
 
 function defaultFn(client) {
-    client.json(client);
-    /*
     client.jsonml(["div",
         ["h1", "Hello world"],
         ["p", "test paragraph"]
     ]);
-    */
 }
 
 qp.route.add("hello", defaultFn);

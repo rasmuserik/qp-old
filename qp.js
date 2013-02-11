@@ -24,6 +24,7 @@ qp.arr = {};
 qp.route = {};
 /**@namespace*/
 qp.dev = {};
+if(typeof global === "undefined") global = this;
 (function() {
     "use strict";
     // environment {{{
@@ -748,6 +749,11 @@ qp.dev = {};
             return JSON.parse(require("fs")["readFileSync"](filename, "utf8"));
         }, fn);
     }; //}}}
+    //{{{readFile
+    qp.sys.readFile = function(filename, encoding, callback) {
+        require("fs")["readFile"](filename, encoding, callback);
+    };
+    //}}}
     // TODO local storage {{{
     if (qp.platform.nodejs) {
         (function() {
@@ -1238,7 +1244,6 @@ qp.dev = {};
             route.args = route.path;
             route.path = undefined;
         } else {
-            console.log(route.path, path);
             route.args = route.path.slice(path.length).split("/").filter(qp.fn.id);
             route.path = path;
         }
@@ -1274,8 +1279,8 @@ qp.dev = {};
             var type = path.split(".")[1];
             path = path.split(".")[0];
             result = {
-                path: [path],
-                type: type && [type]
+                path: path,
+                type: type
             };
             /*
             location.search.slice(1).split("&").forEach(function(str) {
@@ -1291,21 +1296,39 @@ qp.dev = {};
     function main() {
         var route = qp.route.systemCurrent();
         var fn = qp.route.lookup(route);
-        var client = new qp.Client({
-            route: route,
-            done: function() {
+        var doneFn;
+        if(qp.platform.html5) {
+            doneFn = function() {
+                console.log(this.result);
+            }
+        } else {
+            doneFn = function() {
                 if (this.result[0] === "qp:text") {
                     console.log(this.result[2]);
                 } else {
                     console.log(this.result);
                 }
-            }
+            };
+        }
+        var client = new qp.Client({
+            route: route,
+            done: doneFn
         });
         fn(client);
     }
     qp.fn.nextTick(main);
     //}}}
     // builtin routes {{{
+    //{{{static file
+    qp.route.staticFile = function(path, filename) {
+        qp.route.add(path, function(client) {
+            qp.sys.readFile(filename, "utf8", function(err, data) {
+                if(err) throw err;
+                client.text(data);
+            });
+        });
+    };
+    //}}}
     // dev-server {{{
     qp.route.devServer = function(client) {
         var server = function(req, res) {
@@ -1319,7 +1342,12 @@ qp.dev = {};
                     if (json[1] && json[1]["xmlns:qp"] === "http://solsort.com/qp") {
                         if (json[0] === "qp:jsonml") {
                             result = qp.jsonml.toString(["html", ["head", ["title", this.opt.title]],
-                                ["body", json[2]]
+                                ["body", json[2], 
+                                    ["script", {src: "http://closure-library.googlecode.com/svn/trunk/closure/goog/base.js"}, ""],
+                                    ["script", "require=function(){return function(){}}"],
+                                    ["script", {src: "/scripts/qp.js"}, ""],
+                                    ["script", {src: "/scripts/main.js"}, ""]
+                                ]
                             ]);
                         } else {
                             result = String(json[2]);
@@ -1337,6 +1365,8 @@ qp.dev = {};
         app["listen"](qp.port, qp.host, function() {
             console.log("dev-server running on", qp.host + ":" + qp.port);
         });
+        qp.route.staticFile("scripts/qp", __filename);
+        qp.route.staticFile("scripts/main", process["argv"][1]);
     };
     //}}}
     //{{{build
