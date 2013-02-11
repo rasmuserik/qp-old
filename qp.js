@@ -749,9 +749,53 @@ if(typeof global === "undefined") global = this;
             return JSON.parse(require("fs")["readFileSync"](filename, "utf8"));
         }, fn);
     }; //}}}
-    //{{{readFile
-    qp.sys.readFile = function(filename, encoding, callback) {
-        require("fs")["readFile"](filename, encoding, callback);
+    //{{{read
+    qp.sys.read = function(url, opt, callback) {
+        if(qp.platform.nodejs) {
+            var options = require("url")["parse"](url);
+
+            if(qp.str.startsWith(url, "http")) {
+                var client, data;
+
+                if(qp.str.startsWith(url, "http://")) {
+                    client = require("http");
+                } else {
+                    client = require("https");
+                }
+
+                if(opt.post) {
+                    data = require("querystring")["stringify"](opt.post);
+
+                    options["method"] = "POST";
+                    options["headers"] = {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                        "Content-Length": data.length
+                    };
+                }
+
+                var req = client.request(options, function(res) {
+                    var acc = "";
+                    res.on("data", function(d) {
+                        acc += d;
+                    });
+                    res.on("end", function() {
+                        callback(undefined, acc);
+                    });
+                });
+
+                if(opt.post) {
+                    req.write(data);
+                }
+                req.end();
+
+            } else {
+                require("fs")["readFile"](url, opt.encoding || "utf8", callback);
+            }
+        } else if(qp.platform.html5) {
+            throw "unsupported";
+        } else {
+            throw "unsupported";
+        }
     };
     //}}}
     // TODO local storage {{{
@@ -1323,7 +1367,7 @@ if(typeof global === "undefined") global = this;
     //{{{static file
     qp.route.staticFile = function(path, filename) {
         qp.route.add(path, function(client) {
-            qp.sys.readFile(filename, "utf8", function(err, data) {
+            qp.sys.read(filename, {encoding: "utf8"}, function(err, data) {
                 if(err) throw err;
                 client.text(data);
             });
