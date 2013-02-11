@@ -1158,10 +1158,7 @@ if(typeof global === "undefined") global = this;
     //{{{jsonml
     /** @param {*} jsonml */
     qp.Client.prototype.jsonml = function(jsonml) {
-        this.result = ["qp:jsonml", {
-            "xmlns:qp": "http://solsort.com/qp"
-        },
-        jsonml];
+        this.result = {qp_jsonml: jsonml};
         this.done();
     };
     //}}}
@@ -1174,10 +1171,7 @@ if(typeof global === "undefined") global = this;
     //}}}
     //{{{text
     qp.Client.prototype.text = function(str) {
-        this.result = ["qp:text", {
-            "xmlns:qp": "http://solsort.com/qp"
-        },
-        str];
+        this.result = {qp_text: str};
         this.done();
     };
     //}}}
@@ -1303,8 +1297,10 @@ if(typeof global === "undefined") global = this;
             }
         } else {
             doneFn = function() {
-                if (this.result[0] === "qp:text") {
-                    console.log(this.result[2]);
+                if (this.result.qp_text) {
+                    console.log(this.result.qp_text);
+                } else if (this.result.qp_jsonml) {
+                    console.log(this.result.qp_jsonml);
                 } else {
                     console.log(this.result);
                 }
@@ -1339,19 +1335,17 @@ if(typeof global === "undefined") global = this;
                 done: function() {
                     var json = this.result;
                     var result;
-                    if (json[1] && json[1]["xmlns:qp"] === "http://solsort.com/qp") {
-                        if (json[0] === "qp:jsonml") {
+                    if (json.qp_jsonml) {
                             result = qp.jsonml.toString(["html", ["head", ["title", this.opt.title]],
-                                ["body", json[2], 
+                                ["body", json.qp_jsonml, 
                                     ["script", {src: "http://closure-library.googlecode.com/svn/trunk/closure/goog/base.js"}, ""],
                                     ["script", "require=function(){return function(){}}"],
                                     ["script", {src: "/scripts/qp.js"}, ""],
                                     ["script", {src: "/scripts/main.js"}, ""]
                                 ]
                             ]);
-                        } else {
-                            result = String(json[2]);
-                        }
+                    } else if(json.qp_text) {
+                        result = String(json.qp_text);
                     } else {
                         result = require("util")["inspect"](json, false, null);
                     }
