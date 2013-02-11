@@ -24,7 +24,7 @@ qp.arr = {};
 qp.route = {};
 /**@namespace*/
 qp.dev = {};
-if(typeof global === "undefined") global = this;
+if (typeof global === "undefined") global = this;
 (function() {
     "use strict";
     // environment {{{
@@ -751,19 +751,19 @@ if(typeof global === "undefined") global = this;
     }; //}}}
     //{{{read
     qp.sys.read = function(url, opt, callback) {
-        if(qp.platform.nodejs) {
+        if (qp.platform.nodejs) {
             var options = require("url")["parse"](url);
 
-            if(qp.str.startsWith(url, "http")) {
+            if (qp.str.startsWith(url, "http")) {
                 var client, data;
 
-                if(qp.str.startsWith(url, "http://")) {
+                if (qp.str.startsWith(url, "http://")) {
                     client = require("http");
                 } else {
                     client = require("https");
                 }
 
-                if(opt.post) {
+                if (opt.post) {
                     data = require("querystring")["stringify"](opt.post);
 
                     options["method"] = "POST";
@@ -783,7 +783,7 @@ if(typeof global === "undefined") global = this;
                     });
                 });
 
-                if(opt.post) {
+                if (opt.post) {
                     req.write(data);
                 }
                 req.end();
@@ -791,7 +791,7 @@ if(typeof global === "undefined") global = this;
             } else {
                 require("fs")["readFile"](url, opt.encoding || "utf8", callback);
             }
-        } else if(qp.platform.html5) {
+        } else if (qp.platform.html5) {
             throw "unsupported";
         } else {
             throw "unsupported";
@@ -1202,7 +1202,9 @@ if(typeof global === "undefined") global = this;
     //{{{jsonml
     /** @param {*} jsonml */
     qp.Client.prototype.jsonml = function(jsonml) {
-        this.result = {qp_jsonml: jsonml};
+        this.result = {
+            qp_jsonml: jsonml
+        };
         this.done();
     };
     //}}}
@@ -1215,7 +1217,9 @@ if(typeof global === "undefined") global = this;
     //}}}
     //{{{text
     qp.Client.prototype.text = function(str) {
-        this.result = {qp_text: str};
+        this.result = {
+            qp_text: str
+        };
         this.done();
     };
     //}}}
@@ -1335,15 +1339,15 @@ if(typeof global === "undefined") global = this;
         var route = qp.route.systemCurrent();
         var fn = qp.route.lookup(route);
         var doneFn;
-        if(qp.platform.html5) {
+        if (qp.platform.html5) {
             doneFn = function() {
                 var result = this.result;
-                if(result.qp_jsonml) {
+                if (result.qp_jsonml) {
                     document.body.innerHTML = qp.jsonml.toString(result.qp_jsonml);
                 } else {
                     console.log(result);
                 }
-            }
+            };
         } else {
             doneFn = function() {
                 if (this.result.qp_text) {
@@ -1367,8 +1371,10 @@ if(typeof global === "undefined") global = this;
     //{{{static file
     qp.route.staticFile = function(path, filename) {
         qp.route.add(path, function(client) {
-            qp.sys.read(filename, {encoding: "utf8"}, function(err, data) {
-                if(err) throw err;
+            qp.sys.read(filename, {
+                encoding: "utf8"
+            }, function(err, data) {
+                if (err) throw err;
                 client.text(data);
             });
         });
@@ -1385,15 +1391,20 @@ if(typeof global === "undefined") global = this;
                     var json = this.result;
                     var result;
                     if (json.qp_jsonml) {
-                            result = qp.jsonml.toString(["html", ["head", ["title", this.opt.title]],
-                                ["body", json.qp_jsonml, 
-                                    ["script", {src: "http://closure-library.googlecode.com/svn/trunk/closure/goog/base.js"}, ""],
-                                    ["script", "require=function(){return function(){}}"],
-                                    ["script", {src: "/scripts/qp.js"}, ""],
-                                    ["script", {src: "/scripts/main.js"}, ""]
-                                ]
-                            ]);
-                    } else if(json.qp_text) {
+                        result = qp.jsonml.toString(["html", ["head", ["title", this.opt.title]],
+                            ["body", json.qp_jsonml, ["script", {
+                                src: "http://closure-library.googlecode.com/svn/trunk/closure/goog/base.js"
+                            }, ""],
+                                ["script", "require=function(){return function(){}}"],
+                                ["script", {
+                                    src: "/scripts/qp.js"
+                                }, ""],
+                                ["script", {
+                                    src: "/scripts/main.js"
+                                }, ""]
+                            ]
+                        ]);
+                    } else if (json.qp_text) {
                         result = String(json.qp_text);
                     } else {
                         result = require("util")["inspect"](json, false, null);

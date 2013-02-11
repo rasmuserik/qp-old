@@ -1,8 +1,7 @@
 require("./qp")(global);
 
 function defaultFn(client) {
-    client.jsonml(["div",
-        ["h1", "Hello world"],
+    client.jsonml(["div", ["h1", "Hello world"],
         ["p", "test paragraph"]
     ]);
 }
