@@ -5,6 +5,7 @@
  * @namespace
  */
 var qp = {};
+/**@namespace*/
 qp.platform = {};
 /**@namespace*/
 qp.fn = {};
@@ -97,9 +98,9 @@ if (typeof global === "undefined") global = this;
     //}}}
     //{{{map
     /** map a function across the values of an object, and return a new object with the resulting values
-     * @param {!Object} obj
-     * @param {function(*)} fn
-     * @return {Object}
+     * @param {!Object} obj the object.
+     * @param {function(*)} fn function to map across each value of the object.
+     * @return {Object} new object with keys as in obj, and values mapped.
      */
     qp.obj.map = function(obj, fn) {
         var result = {};
@@ -111,7 +112,7 @@ if (typeof global === "undefined") global = this;
     //{{{notEmpty
     /** Check if an object is an empty object
      * @param {!Object} obj
-     * @return {boolean}
+     * @return {boolean} false if object is empty, else true.
      */
     qp.obj.notEmptyObject = function(obj) {
         return Object.keys(obj).length !== 0;
@@ -119,15 +120,15 @@ if (typeof global === "undefined") global = this;
     //{{{empty
     /** Check if an object is an empty object
      * @param {!Object} obj
-     * @return {boolean}
+     * @return {boolean} true if object is empty, otherwise false.
      */
     qp.obj.empty = function(obj) {
         return Object.keys(obj).length === 0;
     }; //}}}
     // objForEach {{{
     /** call a function on each key/val
-     * @param {!Object} obj
-     * @param {function(string,*)} fn
+     * @param {!Object} obj object on which element to apply the function.
+     * @param {function(string,*)} fn the function.
      */
     qp.obj.forEach = function(obj, fn) {
         Object.keys(obj).forEach(function(key) {
@@ -135,6 +136,7 @@ if (typeof global === "undefined") global = this;
         });
     }; //}}}
     //{{{values
+    /** @return {Array} the list of values in the object. */
     qp.obj.values = function(obj) {
         var result = [];
         for (var key in obj) {
@@ -170,8 +172,8 @@ if (typeof global === "undefined") global = this;
     }; //}}}
     //{{{flatten
     /** collapse nested arrays into a single new array
-     * @param {Array} arr
-     * @return {Array}
+     * @param {Array} arr array, possibly containing arrays, to flatten.
+     * @return {Array} flattened array.
      */
     qp.arr.flatten = function(arr) {
         var acc = [];
@@ -188,7 +190,7 @@ if (typeof global === "undefined") global = this;
     //shuffle{{{
     /** Put an array in random order (in-place)
      * @param {Array} arr the array to shuffle.
-     * @return {Array}
+     * @return {Array} the same array, which has now been shuffled.
      */
     qp.arr.shuffle = function(arr) {
         var i = arr.length;
@@ -203,16 +205,17 @@ if (typeof global === "undefined") global = this;
     }; //}}}
     //arrayPickRandom{{{
     /** Pick a random element from an array
-     * @param {Array} arr
+     * @param {Array} arr array to pick from.
+     * @return {*} an element from the array.
      */
     qp.arr.pickRandom = function(arr) {
         return arr[Math.random() * arr.length | 0];
     }; //}}}
     //asyncArrayForEach{{{
     /** apply an asynchronous function to each array element
-     * @param {Array} arr
-     * @param {function(*, function(...[*]))} fn
-     * @param {function(...[*])} done
+     * @param {Array} arr the array to map across.
+     * @param {function(*, function(...[*]))} fn function that will be called on each element of the array.
+     * @param {function(...[*])} done callback when done.
      */
     qp.arr.asyncForEach = function(arr, fn, done) {
         var count = arr.length;
@@ -237,7 +240,7 @@ if (typeof global === "undefined") global = this;
         nbsp: "\xa0"
     }; //}}}
     //{{{fromString
-    /** @param {string} str */
+    /** @param {string} str xml encoded as string to parse. */
     qp.jsonml.fromString = function(str) {
         var errors = [];
 
@@ -386,7 +389,7 @@ if (typeof global === "undefined") global = this;
         return tag;
     }; //}}}
     //{{{toString
-    /** @param {*} jsonml */
+    /** @param {*} jsonml xml to change into a string. */
     qp.jsonml.toString = function(jsonml) {
         if (Array.isArray(jsonml)) {
             var children;
@@ -423,6 +426,7 @@ if (typeof global === "undefined") global = this;
         }
     }; //}}}
     //{{{toDom
+    /** Transform jsonml into dom object */
     qp.jsonml.toDom = function(jsonml) {
         if (Array.isArray(jsonml)) {
             var children;
