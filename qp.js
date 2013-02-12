@@ -69,6 +69,15 @@ if (typeof global === "undefined") global = this;
     //}}}
     //}}}
     //{{{obj
+    //{{{urlEncode
+    qp.obj.urlEncode = function(obj) {
+        var acc = [];
+        for(var key in obj) {
+            acc.push(qp.str.urlEscape(key) + "=" + qp.str.urlEscape(obj[key]));
+        }
+        return acc.join("&");
+    };
+    //}}}
     //{{{isObject
     qp.obj.isObject = function(obj) {
         return typeof obj === "object" && obj !== null && obj.constructor === Object;
@@ -638,6 +647,18 @@ if (typeof global === "undefined") global = this;
         return prefix + String(uniqIdCounter);
     };
     var uniqIdCounter = 0; // }}}
+    //urlEscape{{{
+    /** Unescape %-encoding into string
+     * @todo unicode
+     * @param {string} str
+     * @return {string}
+     */
+    qp.str.urlEscape = function(str) {
+        return str.replace(/[^a-zA-Z0-9_.-]/g, function(c) {
+            if(c > 128) throw "unicode not yet supported";
+            return "%" + ((256+c.charCodeAt(0)).toString(16)).slice(1).toUpperCase();
+        });
+    }; //}}}
     //urlUnescape{{{
     /** Unescape %-encoding into string
      * @param {string} str
@@ -767,7 +788,12 @@ if (typeof global === "undefined") global = this;
     //{{{read
     qp.sys.read = function(url, opt, callback) {
         var data;
-        if (qp.platform.nodejs) {
+        if(opt.post) {
+            data = qp.obj.urlEncode(opt.post);
+            console.log(data);
+        }
+            //{{{if nodejs
+        if (qp.platform.nodejs) { 
             var options = require("url")["parse"](url);
 
             if (qp.str.startsWith(url, "http")) {
@@ -780,8 +806,6 @@ if (typeof global === "undefined") global = this;
                 }
 
                 if (opt.post) {
-                    data = require("querystring")["stringify"](opt.post);
-
                     options["method"] = "POST";
                     options["headers"] = {
                         "Content-Type": "application/x-www-form-urlencoded",
@@ -806,11 +830,13 @@ if (typeof global === "undefined") global = this;
 
             } else {
                 require("fs")["readFile"](url, opt.encoding || "utf8", callback);
-            }
-        } else if (qp.platform.html5) {
+            } 
+            //}}}
+            //{{{if html5
+        } else if (qp.platform.html5) { 
             var req = new window.XMLHttpRequest();
-            var method = opt.post ? "GET" : "POST";
-            console.log("here", req);
+            var method = opt.post ? "POST" : "GET";
+            console.log("here", req, method, opt, opt.post);
             req.open(method, url, true);
             req.onreadystatechange = function(e) {
                 if(req.readyState === 4) {
@@ -822,14 +848,12 @@ if (typeof global === "undefined") global = this;
                 }
             };
             if(opt.post) {
-                // TODO
-                data = "";
                 req.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
                 req.send(data);
             } else {
                 req.send();
             }
-            
+        //}}}
         } else {
             throw "unsupported";
         }
