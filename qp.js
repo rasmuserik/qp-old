@@ -72,7 +72,7 @@ if (typeof global === "undefined") global = this;
     //{{{urlEncode
     qp.obj.urlEncode = function(obj) {
         var acc = [];
-        for(var key in obj) {
+        for (var key in obj) {
             acc.push(qp.str.urlEscape(key) + "=" + qp.str.urlEscape(obj[key]));
         }
         return acc.join("&");
@@ -83,10 +83,10 @@ if (typeof global === "undefined") global = this;
         var result = {};
         str.split("&").forEach(function(keyval) {
             var splitpos = keyval.indexOf("=");
-            if(splitpos === -1) {
+            if (splitpos === -1) {
                 result[qp.str.urlUnescape(keyval)] = true;
             } else {
-                result[qp.str.urlUnescape(keyval.slice(0, splitpos))] = qp.str.urlUnescape(keyval.slice(splitpos+1));
+                result[qp.str.urlUnescape(keyval.slice(0, splitpos))] = qp.str.urlUnescape(keyval.slice(splitpos + 1));
             }
         });
         return result
@@ -669,8 +669,8 @@ if (typeof global === "undefined") global = this;
      */
     qp.str.urlEscape = function(str) {
         return str.replace(/[^a-zA-Z0-9_.-]/g, function(c) {
-            if(c > 128) throw "unicode not yet supported";
-            return "%" + ((256+c.charCodeAt(0)).toString(16)).slice(1).toUpperCase();
+            if (c > 128) throw "unicode not yet supported";
+            return "%" + ((256 + c.charCodeAt(0)).toString(16)).slice(1).toUpperCase();
         });
     }; //}}}
     //urlUnescape{{{
@@ -802,11 +802,11 @@ if (typeof global === "undefined") global = this;
     //{{{read
     qp.sys.read = function(url, opt, callback) {
         var data;
-        if(opt.post) {
+        if (opt.post) {
             data = qp.obj.urlEncode(opt.post);
         }
-            //{{{if nodejs
-        if (qp.platform.nodejs) { 
+        //{{{if nodejs
+        if (qp.platform.nodejs) {
             var options = require("url")["parse"](url);
 
             if (qp.str.startsWith(url, "http")) {
@@ -843,29 +843,29 @@ if (typeof global === "undefined") global = this;
 
             } else {
                 require("fs")["readFile"](url, opt.encoding || "utf8", callback);
-            } 
+            }
             //}}}
             //{{{if html5
-        } else if (qp.platform.html5) { 
+        } else if (qp.platform.html5) {
             var req = new window.XMLHttpRequest();
             var method = opt.post ? "POST" : "GET";
             req.open(method, url, true);
             req.onreadystatechange = function(e) {
-                if(req.readyState === 4) {
-                    if(req.status === 200) {
+                if (req.readyState === 4) {
+                    if (req.status === 200) {
                         callback(null, req.responseText);
                     } else {
                         callback(req);
                     }
                 }
             };
-            if(opt.post) {
+            if (opt.post) {
                 req.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
                 req.send(data);
             } else {
                 req.send();
             }
-        //}}}
+            //}}}
         } else {
             throw "unsupported";
         }
@@ -1284,7 +1284,9 @@ if (typeof global === "undefined") global = this;
     //{{{error
     /** @param {*} json */
     qp.Client.prototype.error = function(json) {
-        this.result = {qp_error: json};
+        this.result = {
+            qp_error: json
+        };
         this.done();
     };
     //}}}
@@ -1350,7 +1352,13 @@ if (typeof global === "undefined") global = this;
     }; //}}}
     //{{{rpc
     qp.route.rpc = function(path, opt, fn) {
-        qp.sys.read("http://" + qp.host + ":" + qp.port + "/" + path + ".json", {post: {qp_route: JSON.stringify(opt)}}, function(err, data) { fn(err, JSON.parse(data)); });
+        qp.sys.read("http://" + qp.host + ":" + qp.port + "/" + path + ".json", {
+            post: {
+                qp_route: JSON.stringify(opt)
+            }
+        }, function(err, data) {
+            fn(err, JSON.parse(data));
+        });
     }; //}}}
     //{{{lookupRoute
     /** given a path, return the corresponding handling function @param {string} path */
@@ -1380,7 +1388,7 @@ if (typeof global === "undefined") global = this;
     /** get the current path/arguments/... @return {Object} */
     qp.route.systemCurrent = function() {
         var route = {};
-        
+
         if (qp.platform.nodejs) {
             var argv = process["argv"];
             route.path = argv[2] || "";
@@ -1390,7 +1398,7 @@ if (typeof global === "undefined") global = this;
         }
 
         var dotIndex = route.path.indexOf(".");
-        if(dotIndex !== -1) {
+        if (dotIndex !== -1) {
             route.type = route.path.slice(dotIndex + 1);
             route.path = route.path.slice(0, dotIndex);
         }
@@ -1455,41 +1463,41 @@ if (typeof global === "undefined") global = this;
                 data += chunk;
             });
             req["on"]("end", function() {
-                if(data) {
+                if (data) {
                     data = qp.obj.urlDecode(data);
-                    if(data["qp_route"]) {
+                    if (data["qp_route"]) {
                         qp.obj.extend(route, JSON.parse(data["qp_route"]));
                     }
                 }
 
-            client = new qp.Client({
-                route: route,
-                done: function() {
-                    var json = this.result;
-                    var result;
-                    if (json.qp_jsonml) {
-                        result = qp.jsonml.toString(["html", ["head", ["title", this.opt.title]],
-                            ["body", json.qp_jsonml, ["script", {
-                                src: "http://closure-library.googlecode.com/svn/trunk/closure/goog/base.js"
-                            }, ""],
-                                ["script", "require=function(){return function(){}}"],
-                                ["script", {
-                                    src: "/scripts/qp.js"
+                client = new qp.Client({
+                    route: route,
+                    done: function() {
+                        var json = this.result;
+                        var result;
+                        if (json.qp_jsonml) {
+                            result = qp.jsonml.toString(["html", ["head", ["title", this.opt.title]],
+                                ["body", json.qp_jsonml, ["script", {
+                                    src: "http://closure-library.googlecode.com/svn/trunk/closure/goog/base.js"
                                 }, ""],
-                                ["script", {
-                                    src: "/scripts/main.js"
-                                }, ""]
-                            ]
-                        ]);
-                    } else if (json.qp_text) {
-                        result = String(json.qp_text);
-                    } else {
+                                    ["script", "require=function(){return function(){}}"],
+                                    ["script", {
+                                        src: "/scripts/qp.js"
+                                    }, ""],
+                                    ["script", {
+                                        src: "/scripts/main.js"
+                                    }, ""]
+                                ]
+                            ]);
+                        } else if (json.qp_text) {
+                            result = String(json.qp_text);
+                        } else {
 
-                        result = JSON.stringify(json);
+                            result = JSON.stringify(json);
+                        }
+                        res["end"](result);
                     }
-                    res["end"](result);
-                }
-            });
+                });
 
                 fn(client);
             });
