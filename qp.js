@@ -78,6 +78,20 @@ if (typeof global === "undefined") global = this;
         return acc.join("&");
     };
     //}}}
+    //{{{urlDecode
+    qp.obj.urlDecode = function(str) {
+        var result = {};
+        str.split("&").forEach(function(keyval) {
+            var splitpos = keyval.indexOf("=");
+            if(splitpos === -1) {
+                result[qp.str.urlUnescape(keyval)] = true;
+            } else {
+                result[qp.str.urlUnescape(keyval.slice(0, splitpos))] = qp.str.urlUnescape(keyval.slice(splitpos+1));
+            }
+        });
+        return result
+    };
+    //}}}
     //{{{isObject
     qp.obj.isObject = function(obj) {
         return typeof obj === "object" && obj !== null && obj.constructor === Object;
@@ -790,7 +804,6 @@ if (typeof global === "undefined") global = this;
         var data;
         if(opt.post) {
             data = qp.obj.urlEncode(opt.post);
-            console.log(data);
         }
             //{{{if nodejs
         if (qp.platform.nodejs) { 
@@ -836,7 +849,6 @@ if (typeof global === "undefined") global = this;
         } else if (qp.platform.html5) { 
             var req = new window.XMLHttpRequest();
             var method = opt.post ? "POST" : "GET";
-            console.log("here", req, method, opt, opt.post);
             req.open(method, url, true);
             req.onreadystatechange = function(e) {
                 if(req.readyState === 4) {
@@ -1338,7 +1350,7 @@ if (typeof global === "undefined") global = this;
     }; //}}}
     //{{{rpc
     qp.route.rpc = function(path, opt, fn) {
-        qp.sys.read("http://" + qp.host + ":" + qp.port + "/" + path, {post: {qp_rpc: JSON.stringify(opt)}}, fn);
+        qp.sys.read("http://" + qp.host + ":" + qp.port + "/" + path + ".json", {post: {qp_route: JSON.stringify(opt)}}, function(err, data) { fn(err, JSON.parse(data)); });
     }; //}}}
     //{{{lookupRoute
     /** given a path, return the corresponding handling function @param {string} path */
@@ -1436,7 +1448,21 @@ if (typeof global === "undefined") global = this;
         var server = function(req, res) {
             var route = qp.route.fromUrl(req.url);
             var fn = qp.route.lookup(route);
-            var client = new qp.Client({
+            var client;
+            var data = "";
+            req["setEncoding"]("utf8");
+            req["on"]("data", function(chunk) {
+                data += chunk;
+            });
+            req["on"]("end", function() {
+                if(data) {
+                    data = qp.obj.urlDecode(data);
+                    if(data["qp_route"]) {
+                        qp.obj.extend(route, JSON.parse(data["qp_route"]));
+                    }
+                }
+
+            client = new qp.Client({
                 route: route,
                 done: function() {
                     var json = this.result;
@@ -1458,12 +1484,15 @@ if (typeof global === "undefined") global = this;
                     } else if (json.qp_text) {
                         result = String(json.qp_text);
                     } else {
-                        result = require("util")["inspect"](json, false, null);
+
+                        result = JSON.stringify(json);
                     }
                     res["end"](result);
                 }
             });
-            fn(client);
+
+                fn(client);
+            });
         };
         var app = require("http")["createServer"](server);
         var io = require("socket.io")["listen"](app);
