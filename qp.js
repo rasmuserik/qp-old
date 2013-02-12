@@ -1212,6 +1212,13 @@ if (typeof global === "undefined") global = this;
         this.done();
     };
     //}}}
+    //{{{error
+    /** @param {*} json */
+    qp.Client.prototype.error = function(json) {
+        this.result = {qp_error: json};
+        this.done();
+    };
+    //}}}
     //{{{json
     /** @param {*} json */
     qp.Client.prototype.json = function(json) {
@@ -1299,43 +1306,23 @@ if (typeof global === "undefined") global = this;
     //{{{systemCurrent
     /** get the current path/arguments/... @return {Object} */
     qp.route.systemCurrent = function() {
-        var result;
+        var route = {};
+        
         if (qp.platform.nodejs) {
             var argv = process["argv"];
-            return {
-                path: argv[2] || ""
-            };
-            /*
-            var key = "path";
-            var result = {};
-            for (var i = 2; i < argv.length; ++i) {
-                if (argv[i][0] === "-") {
-                    key = argv[i].replace(/^--?/, "");
-                    if (!result[key]) {
-                        result[key] = [];
-                    }
-                } else {
-                    qp.obj.listAdd(result, key, argv[i]);
-                }
-            }
-            */
+            route.path = argv[2] || "";
         }
         if (qp.platform.html5) {
-            var path = (location.hash || location.pathname).slice(1);
-            var type = path.split(".")[1];
-            path = path.split(".")[0];
-            result = {
-                path: path,
-                type: type
-            };
-            /*
-            location.search.slice(1).split("&").forEach(function(str) {
-                var split = str.split("=");
-                param[split[0]] = [split[1]];
-            });
-            */
+            route.path = (location.hash || location.pathname).slice(1);
         }
-        return result;
+
+        var dotIndex = route.path.indexOf(".");
+        if(dotIndex !== -1) {
+            route.type = route.path.slice(dotIndex + 1);
+            route.path = route.path.slice(0, dotIndex);
+        }
+        console.log(route);
+        return route;
     };
     //}}}
     //{{{main
