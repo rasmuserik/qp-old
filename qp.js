@@ -10,6 +10,8 @@ qp.platform = {};
 /**@namespace*/
 qp.fn = {};
 /**@namespace*/
+qp.ui = {};
+/**@namespace*/
 qp.sys = {};
 /**@namespace*/
 qp.set = {};
@@ -58,6 +60,14 @@ if (typeof global === "undefined") global = this;
     if (qp.platform.nodejs) {
         var fs = require("fs");
     }
+    //{{{ui
+    //{{{showLoadingIndicator
+    /** @todo */
+    qp.ui.showLoadingIndicator = function(opt) {
+        console.log("qp.ui.showLoadingIndicator not implemented yet");
+    }
+    //}}}
+    //}}}
     //{{{obj
     //{{{isObject
     qp.obj.isObject = function(obj) {
@@ -232,13 +242,13 @@ if (typeof global === "undefined") global = this;
     }; //}}}
     //}}}
     //{{{jsonml
-    var xmlEntities = { //{{{
-        lt: "<",
-        gt: ">",
-        amp: "&",
-        quot: "\"",
-        nbsp: "\xa0"
-    }; //}}}
+    var xmlEntities = {}; //{{{
+    xmlEntities["lt"] = "<";
+    xmlEntities["gt"] = ">";
+    xmlEntities["amp"] = "&";
+    xmlEntities["quot"] = "\"";
+    xmlEntities["nbsp"] = "\xa0";
+    //}}}
     //{{{fromString
     /** @param {string} str xml encoded as string to parse. */
     qp.jsonml.fromString = function(str) {
@@ -608,6 +618,7 @@ if (typeof global === "undefined") global = this;
     }; //}}}
     //}}}
     //{{{str
+    //{{{binSplit
     qp.str.binSplit = function(str, symb) {
         var pos = str.indexOf(symb);
         if (pos === -1) {
@@ -755,11 +766,12 @@ if (typeof global === "undefined") global = this;
     }; //}}}
     //{{{read
     qp.sys.read = function(url, opt, callback) {
+        var data;
         if (qp.platform.nodejs) {
             var options = require("url")["parse"](url);
 
             if (qp.str.startsWith(url, "http")) {
-                var client, data;
+                var client;
 
                 if (qp.str.startsWith(url, "http://")) {
                     client = require("http");
@@ -777,26 +789,47 @@ if (typeof global === "undefined") global = this;
                     };
                 }
 
-                var req = client.request(options, function(res) {
+                var req = client["request"](options, function(res) {
                     var acc = "";
-                    res.on("data", function(d) {
+                    res["on"]("data", function(d) {
                         acc += d;
                     });
-                    res.on("end", function() {
+                    res["on"]("end", function() {
                         callback(undefined, acc);
                     });
                 });
 
                 if (opt.post) {
-                    req.write(data);
+                    req["write"](data);
                 }
-                req.end();
+                req["end"]();
 
             } else {
                 require("fs")["readFile"](url, opt.encoding || "utf8", callback);
             }
         } else if (qp.platform.html5) {
-            throw "unsupported";
+            var req = new window.XMLHttpRequest();
+            var method = opt.post ? "GET" : "POST";
+            console.log("here", req);
+            req.open(method, url, true);
+            req.onreadystatechange = function(e) {
+                if(req.readyState === 4) {
+                    if(req.status === 200) {
+                        callback(null, req.responseText);
+                    } else {
+                        callback(req);
+                    }
+                }
+            };
+            if(opt.post) {
+                // TODO
+                data = "";
+                req.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+                req.send(data);
+            } else {
+                req.send();
+            }
+            
         } else {
             throw "unsupported";
         }
@@ -1279,6 +1312,10 @@ if (typeof global === "undefined") global = this;
     qp.route.add = function(path, fn) {
         routes[path.toLowerCase()] = fn;
     }; //}}}
+    //{{{rpc
+    qp.route.rpc = function(path, opt, fn) {
+        qp.sys.read("http://" + qp.host + ":" + qp.port + "/" + path, {post: {qp_rpc: JSON.stringify(opt)}}, fn);
+    }; //}}}
     //{{{lookupRoute
     /** given a path, return the corresponding handling function @param {string} path */
     qp.route.lookup = function(route) {
@@ -1321,7 +1358,6 @@ if (typeof global === "undefined") global = this;
             route.type = route.path.slice(dotIndex + 1);
             route.path = route.path.slice(0, dotIndex);
         }
-        console.log(route);
         return route;
     };
     //}}}
