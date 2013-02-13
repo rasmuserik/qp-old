@@ -107,7 +107,7 @@ if (typeof global === "undefined") global = this;
             ".blue": {
                 "textColor": "blue"
             }
-        }, "body{background:red;margin:0px;}.blue{text-color:blue;}");
+        }, "body{background:red;margin:0px;}.blue{text-color:blue;}"));
     });
     //}}}
     //}}}
