@@ -8,6 +8,8 @@ orig = errorrules.ShouldReportError
 
 def reportp(error):
  return error not in (
+   errors.INVALID_JSDOC_TAG,
+   errors.MISSING_JSDOC_TAG_DESCRIPTION,
    errors.UNNECESSARY_DOUBLE_QUOTED_STRING,
    errors.LINE_TOO_LONG,
  ) and orig (error)

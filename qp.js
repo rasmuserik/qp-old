@@ -41,10 +41,10 @@ if (typeof global === "undefined" && typeof window !== "undefined") window["glob
     qp.env.html5 = typeof PLATFORM_HTML5 !== "undefined" ? PLATFORM_HTML5 : !qp.env.nodejs;
     /** Have we been compiled by the google closure compiler @type {boolean} */
     qp.env.compiled = typeof COMPILED !== "undefined" ? COMPILED : false;
-    /** Whether unit-tests should be initialised. 
+    /** Whether unit-tests should be initialised.
      * If false, then the closure compiler will remove
      * all traces of unit tests from the source code.
-     * @type {boolean} 
+     * @type {boolean}
      */
     qp.env.test = !qp.env.compiled;
     /** @type {string} */
@@ -189,7 +189,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") window["glob
     //}}}
     //{{{ui
     //{{{showLoadingIndicator
-    /** @todo */
+    //TODO
     qp.ui.showLoadingIndicator = function(opt) {
         console.log("qp.ui.showLoadingIndicator not implemented yet");
     };
@@ -293,7 +293,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") window["glob
     }; //}}}
     //{{{notEmpty
     /** Check if an object is an empty object
-     * @param {!Object} obj
+     * @param {!Object} obj the object to test if is empty.
      * @return {boolean} false if object is empty, else true.
      */
     qp.obj.notEmptyObject = function(obj) {
@@ -301,7 +301,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") window["glob
     }; //}}}
     //{{{empty
     /** Check if an object is an empty object
-     * @param {!Object} obj
+     * @param {!Object} obj the object to test if empty.
      * @return {boolean} true if object is empty, otherwise false.
      */
     qp.obj.empty = function(obj) {
@@ -794,7 +794,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") window["glob
     /** Functional exception handling
      * @param {function()} fn1 function to call.
      * @param {function(*)} fn2 exception handling function, called if fn1 throw. The parameter will be execption thrown.
-     * @return result from fn1 or fn2.
+     * @return {*} result from fn1 or fn2.
      */
     qp.fn.trycatch = function(fn1, fn2) {
         try {
