@@ -71,8 +71,8 @@ if (typeof global === "undefined") global = this;
     //}}}
     // test("name", fn{...}) {{{
     qp.test = function(name, fn) {
-        if(qp.env.test) {
-            if(!qp.tests) {
+        if (qp.env.test) {
+            if (!qp.tests) {
                 qp.tests = {};
             }
             qp.tests[name] = fn;
@@ -107,7 +107,7 @@ if (typeof global === "undefined") global = this;
         }
     }; //}}}
     TestSuite.prototype.timeout = function(time) { //{{{
-        if(this._timeout !== undefined) {
+        if (this._timeout !== undefined) {
             clearTimeout(this._timeout);
         }
         var self = this;
@@ -115,9 +115,9 @@ if (typeof global === "undefined") global = this;
             self.fail("timeout after " + time + "ms");
             self.done();
         }, time);
-    }//}}}
+    } //}}}
     TestSuite.prototype.done = function() { //{{{
-        if(!this._finished) {
+        if (!this._finished) {
             this._finished = true;
             this.suites -= 1;
             this._cleanup();
@@ -150,20 +150,22 @@ if (typeof global === "undefined") global = this;
             return "-" + c.toLowerCase();
         });
     }
+
     function cssDeclToStr(key, val) {
-        if(typeof val === "number") {
+        if (typeof val === "number") {
             val = val + "px";
         }
         return cssBrowserName(key) + ":" + val + ";";
     }
+
     function cssRuleToStr(key, val) {
         return key + "{" + qp.css.toString(val) + "}";
     }
     qp.css.toString = function(css) {
         var result = ""
-        for(var key in css) {
+        for (var key in css) {
             var val = css[key];
-            if(qp.obj.isObject(val)) {
+            if (qp.obj.isObject(val)) {
                 result += cssRuleToStr(key, val);
             } else {
                 result += cssDeclToStr(key, val);
@@ -244,8 +246,8 @@ if (typeof global === "undefined") global = this;
             var obj = arguments[i];
             for (var key in obj) {
                 var val = obj[key];
-                if(qp.obj.isObject(val)) {
-                    if(!qp.obj.isObject(target[key])) {
+                if (qp.obj.isObject(val)) {
+                    if (!qp.obj.isObject(target[key])) {
                         target[key] = {};
                     }
                     qp.obj.recursiveExtend(target[key], val);
@@ -314,7 +316,7 @@ if (typeof global === "undefined") global = this;
         Object.keys(obj).forEach(function(key) {
             fn(key, obj[key]);
         });
-    }; 
+    };
     qp.test("qp.obj.forEach", function(test) {
         var count = 0;
         var obj = {
@@ -878,14 +880,14 @@ if (typeof global === "undefined") global = this;
      */
     qp.str.startsWith = function(str, prefix) {
         return str.slice(0, prefix.length) === prefix;
-    }; 
-    qp.test("qp.str.startsWith", function(test){
+    };
+    qp.test("qp.str.startsWith", function(test) {
         test.assert(qp.str.startsWith("foobarbaz", "foobar"), "strstartswith1");
         test.assert(!qp.str.startsWith("qoobarbaz", "foobar"), "strstartswith2");
         test.assert(qp.str.startsWith("foobarbaz", ""), "strstartswith3");
         test.assert(!qp.str.startsWith("foo", "foobar"), "strstartswith4");
         test.done();
-    });//}}}
+    }); //}}}
     //}}}
     //{{{sys
     //exec{{{
@@ -1075,7 +1077,7 @@ if (typeof global === "undefined") global = this;
             }
         };
     } //}}}
-    qp.test("qp.sys", function(test) {//{{{
+    qp.test("qp.sys", function(test) { //{{{
         if (qp.env.nodejs) {
             var jsontest = test.suite("load/save-JSON");
             var result = qp.sys.loadJSONSync("/does/not/exists", 1);
@@ -1667,17 +1669,17 @@ if (typeof global === "undefined") global = this;
     qp.route.test = function(client) {
         var test = new TestSuite("root", testDone);
         test.timeout(5 * 60 * 1000);
-        for(var key in qp.tests) {
+        for (var key in qp.tests) {
             qp.tests[key](test.suite(key));
         }
         test.done();
 
         function testDone() {
             console.log("Tests done.");
-            if(test.errorCount !== 0) {
+            if (test.errorCount !== 0) {
                 console.log(test.errorCount + "errors occured.");
             }
-            if(qp.env.nodejs) {
+            if (qp.env.nodejs) {
                 process.exit(test.errorCount);
             }
         }
