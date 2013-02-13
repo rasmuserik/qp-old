@@ -1,5 +1,5 @@
 /*jshint sub:true*/
-/*global global BUILTIN_ROUTES PLATFORM_NODEJS PLATFORM_HTML5 process setTimeout location require console window localStorage document module __dirname __filename*/
+/*global global COMPILED PLATFORM_NODEJS PLATFORM_HTML5 process setTimeout location require console window localStorage document module __dirname __filename*/
 /**
  * The qp module is a collection of utilities.
  * @namespace
@@ -33,17 +33,25 @@ if (typeof global === "undefined") global = this;
 (function() {
     "use strict";
     // environment {{{
-    /** @type {boolean} */
+    /** Are we in a node.js environment @type {boolean} */
     qp.env.nodejs = typeof PLATFORM_NODEJS !== "undefined" ? PLATFORM_NODEJS : typeof process !== "undefined";
-    /** @type {boolean} */
+    /** Are we in a html5 environment @type {boolean} */
     qp.env.html5 = typeof PLATFORM_HTML5 !== "undefined" ? PLATFORM_HTML5 : !qp.env.nodejs;
+    /** Have we been compiled by the google closure compiler @type {boolean} */
+    qp.env.compiled = typeof COMPILED !== "undefined" ? COMPILED : false;
+    /** Whether unit-tests should be initialised. 
+     * If false, then the closure compiler will remove
+     * all traces of unit tests from the source code.
+     * @type {boolean} 
+     */
+    qp.env.test = !qp.env.compiled;
     /** @type {string} */
     qp.host = "localhost";
     /** @type {number} */
     qp.port = 1234;
     // }}}
     // setup {{{
-    if (typeof BUILTIN_ROUTES !== "undefined" ? BUILTIN_ROUTES : true) {
+    if (!qp.env.compiled) {
         if (qp.env.nodejs) {
             global["CLOSURE_BASE_PATH"] = __dirname + "/node_modules/qp-external/closure-library/closure/goog/";
             require("closure")["Closure"](global);
@@ -61,15 +69,78 @@ if (typeof global === "undefined") global = this;
     //}}}
     // test("name", fn{...}) {{{
     qp.test = function(name, fn) {
-        if(!qp.tests) {
-            qp.tests = {};
+        if(qp.env.test) {
+            if(!qp.tests) {
+                qp.tests = {};
+            }
+            qp.tests[name] = fn;
         }
-        qp.tests[name] = fn;
     };
     // }}}
-    if (qp.env.nodejs) {
-        var fs = require("fs");
-    }
+    // TestSuite class {{{
+    /** @constructor */
+    function TestSuite(name, doneFn) { //{{{
+        this.name = name;
+        this.suites = 1;
+        this.errorCount = 0;
+        this.timeout(10000);
+        if (doneFn) {
+            this.doneFn = doneFn;
+        }
+    } //}}}
+    TestSuite.prototype.fail = function(desc) { //{{{
+        ++this.errorCount;
+        console.log("Fail in " + this.name + ": " + desc);
+    }; //}}}
+    TestSuite.prototype.assert = function(expr, desc) { //{{{
+        if (!expr) {
+            ++this.errorCount;
+            console.log("Assert in " + this.name + ": " + desc);
+        }
+    }; //}}}
+    TestSuite.prototype.assertEqual = function(expr1, expr2, desc) { //{{{
+        if (expr1 !== expr2) {
+            ++this.errorCount;
+            console.log("Assert not equal" + this.name + ": " + (desc || ""), "\n    ", expr1, "\n!== ", expr2);
+        }
+    }; //}}}
+    TestSuite.prototype.timeout = function(time) { //{{{
+        if(this._timeout !== undefined) {
+            clearTimeout(this._timeout);
+        }
+        var self = this;
+        this._timeout = setTimeout(function() {
+            self.fail("timeout after " + time + "ms");
+            self.done();
+        }, time);
+    }//}}}
+    TestSuite.prototype.done = function() { //{{{
+        if(!this._finished) {
+            this._finished = true;
+            this.suites -= 1;
+            this._cleanup();
+        }
+    }; //}}}
+    TestSuite.prototype.suite = function(name) { //{{{
+        var result = new TestSuite(this.name + "#" + name);
+        result.parent = this;
+        this.suites += 1;
+        return result;
+    }; //}}}
+    TestSuite.prototype._cleanup = function() { //{{{
+        if (this.suites === 0) {
+            clearTimeout(this._timeout);
+            if (this.doneFn) {
+                this.doneFn(this.errorCount);
+            }
+            if (this.parent) {
+                this.parent.errorCount += this.errorCount;
+                this.parent.suites -= 1;
+                this.parent._cleanup();
+            }
+        }
+    }; //}}}
+    //}}}
     //{{{css
     //{{{toString
     function cssBrowserName(str) {
@@ -84,7 +155,7 @@ if (typeof global === "undefined") global = this;
         return cssBrowserName(key) + ":" + val + ";";
     }
     function cssRuleToStr(key, val) {
-        return "key{" + qp.css.toString(val) + "}";
+        return key + "{" + qp.css.toString(val) + "}";
     }
     qp.css.toString = function(css) {
         var result = ""
@@ -107,7 +178,8 @@ if (typeof global === "undefined") global = this;
             ".blue": {
                 "textColor": "blue"
             }
-        }, "body{background:red;margin:0px;}.blue{text-color:blue;}"));
+        }), "body{background:red;margin:0px;}.blue{text-color:blue;}");
+        test.done();
     });
     //}}}
     //}}}
@@ -828,6 +900,7 @@ if (typeof global === "undefined") global = this;
      * @param {string} path
      */
     qp.sys.mkdir = function(path) {
+        var fs = require("fs");
         if (qp.env.nodejs) {
             if (!fs["existsSync"](path)) {
                 var splitpath = path.split("/");
@@ -846,6 +919,7 @@ if (typeof global === "undefined") global = this;
      * @param {function(...[*])} callback
      */
     qp.sys.cp = function(src, dst, callback) {
+        var fs = require("fs");
         if (qp.env.nodejs) {
             require("util")["pump"](fs["createReadStream"](src), fs["createWriteStream"](dst), callback);
         }
@@ -855,6 +929,7 @@ if (typeof global === "undefined") global = this;
      * @param {string} filename
      */
     qp.sys.mtime = function(filename) {
+        var fs = require("fs");
         if (qp.env.nodejs) {
             return qp.fn.trycatch(function() {
                 return fs["statSync"](filename).mtime.getTime();
@@ -1000,7 +1075,7 @@ if (typeof global === "undefined") global = this;
     } //}}}
     qp.test("qp.sys", function(test) {//{{{
         if (qp.env.nodejs) {
-            var jsontest = test.create("load/save-JSON");
+            var jsontest = test.suite("load/save-JSON");
             var result = qp.sys.loadJSONSync("/does/not/exists", 1);
             jsontest.assertEqual(result, 1);
             qp.sys.saveJSON("/tmp/exports-save-json-testb", 2);
@@ -1257,55 +1332,6 @@ if (typeof global === "undefined") global = this;
         test.done();
     }; //}}}
     // }}}
-    // TestSuite class {{{
-    /** @constructor */
-    function TestSuite(name, doneFn) { //{{{
-        this.name = name;
-        this.suites = 1;
-        this.errCount = 0;
-        if (doneFn) {
-            this.doneFn = doneFn;
-        }
-    } //}}}
-    TestSuite.prototype.fail = function(expr, desc) { //{{{
-        ++this.errCount;
-        console.log("Fail in " + this.name + ": " + desc);
-    }; //}}}
-    TestSuite.prototype.assert = function(expr, desc) { //{{{
-        if (!expr) {
-            ++this.errCount;
-            console.log("Assert in " + this.name + ": " + desc);
-        }
-    }; //}}}
-    TestSuite.prototype.assertEqual = function(expr1, expr2, desc) { //{{{
-        if (expr1 !== expr2) {
-            ++this.errCount;
-            console.log("Assert in " + this.name + ": " + desc);
-        }
-    }; //}}}
-    TestSuite.prototype.done = function() { //{{{
-        this.suites -= 1;
-        this._cleanup();
-    }; //}}}
-    TestSuite.prototype.suite = function(name) { //{{{
-        var result = new TestSuite(this.name + "#" + name, this.doneFn);
-        result.parent = this;
-        this.suites += 1;
-        return result;
-    }; //}}}
-    TestSuite.prototype._cleanup = function() { //{{{
-        if (this.suites === 0) {
-            if (this.doneFn) {
-                this.doneFn(this.errCount);
-            }
-            if (this.parent) {
-                this.parent.errCount += this.errCount;
-                this.parent.suites -= 1;
-                this.parent._cleanup();
-            }
-        }
-    }; //}}}
-    //}}}
     // Client {{{
     //{{{constructor
     /** @constructor */
@@ -1489,6 +1515,7 @@ if (typeof global === "undefined") global = this;
     }
     qp.fn.nextTick(main);
     //}}}
+    //}}}
     // builtin routes {{{
     //{{{static file
     qp.route.staticFile = function(path, filename) {
@@ -1584,6 +1611,7 @@ if (typeof global === "undefined") global = this;
                 }
             }
 
+            var fs = require("fs");
             // read the app source code
             fs["readFile"](appSource, "utf8", function(err, data) {
                 if (err) throw err;
@@ -1635,11 +1663,26 @@ if (typeof global === "undefined") global = this;
     //}}}
     //{{{test
     qp.route.test = function(client) {
-        console.log(qp.tests);
+        var test = new TestSuite("root", testDone);
+        test.timeout(5 * 60 * 1000);
+        for(var key in qp.tests) {
+            qp.tests[key](test.suite(key));
+        }
+        test.done();
+
+        function testDone() {
+            console.log("Tests done.");
+            if(test.errorCount !== 0) {
+                console.log(test.errorCount + "errors occured.");
+            }
+            if(qp.env.nodejs) {
+                process.exit(test.errorCount);
+            }
+        }
     };
     //}}}
     //{{{register default routes
-    if (typeof BUILTIN_ROUTES !== "undefined" ? BUILTIN_ROUTES : true) {
+    if (!qp.env.compiled) {
         if (qp.env.nodejs) {
             qp.route.add("jsdoc", qp.route.jsdoc);
             qp.route.add("build", qp.route.build);
@@ -1648,7 +1691,6 @@ if (typeof global === "undefined") global = this;
         }
     }
     //}}}
-    // }}}
     //}}}
     // css/dom-processing-monad{{{
     // DomProcess {{{
