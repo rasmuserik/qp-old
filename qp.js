@@ -186,40 +186,29 @@ if (typeof global === "undefined" && typeof window !== "undefined") window["glob
         test.done();
     });
     //}}}
-    //{{{add
-    qp.css.add = function(fn) {
-        if(!qp._styleFns) { qp._styleFns = []; }
-        qp._styleFns.push(fn);
-        qp.css.update();
-    };
-    //}}}
-    //{{{calc
-    qp.css.calc = function(opt) {
-        if(!qp._styleFns) return {};
-        opt = qp.obj.recursiveExtend({}, opt);
-        opt.css = opt.css || {};
-        for(var i = 0; i < qp._styleFns.length; ++i) {
-            var res = qp._styleFns[i](opt);
-            if(qp.obj.isObject(res)) {
-                qp.obj.recursiveExtend(opt.css, res);
-            }
+    //{{{update
+    function html5cssUpdate() {
+        var throttled = qp.fn.throttle(html5cssUpdate, 30);
+        var view = {
+            width: window.innerWidth, 
+            height: window.innerHeight
+        };
+        if(!qp._styleTag) {
+            qp._styleTag = document.createElement("style");
+            document.head.appendChild(qp._styleTag);
+            window.addEventListener("resize", throttled);
         }
-        return opt.css
+        var style = qp._styleFn(view);
+        if(typeof style !== "string") {
+            style = qp.css.toString(style);
+        }
+        qp._styleTag["innerHTML"] = style;
     }
-    //}}}
-    //{{{
-    qp.css.update = function() {
+    qp.css.update = function(styleFn) {
+        qp._styleFn = styleFn || qp._styleFn;
+        if(!styleFn) return;
         if(qp.env.html5) {
-            var obj = {
-                width: window.innerWidth, 
-                height: window.innerHeight
-            };
-            if(!qp._styleTag) {
-                qp._styleTag = document.createElement("style");
-                document.head.appendChild(qp._styleTag);
-            }
-            qp._styleTag["innerHTML"] = qp.css.toString(qp.css.calc(obj));
-            window.addEventListener("resize", qp.css.update);
+            html5cssUpdate();
         } 
     }
     //}}}
@@ -776,13 +765,13 @@ if (typeof global === "undefined" && typeof window !== "undefined") window["glob
             }
         };
     }; //}}}
-    //throttledFn{{{
+    //throttle{{{
     /** make sure a given function is called not called to often
      * @param {function()} fn the function to be executed.
      * @param {number=} delay how long (in ms.) should the shortest interval between function calls be. defaults 5000ms.
      * @return {function(function()=): undefined}
      */
-    qp.fn.throttledFn = function(fn, delay) {
+    qp.fn.throttle = function(fn, delay) {
         delay = delay || 5000;
         var lastRun = 0;
         var scheduled = false;
@@ -1091,7 +1080,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") window["glob
             }, function() {
                 return {};
             });
-            var syncLocalStorage = qp.fn.throttledFn(function() {
+            var syncLocalStorage = qp.fn.throttle(function() {
                 require("fs")["writeFile"](process["env"]["HOME"] + "/data/local.sqlite3", JSON.stringify(db, null, "  "));
             });
             var lastSync = 0;
@@ -1382,6 +1371,18 @@ if (typeof global === "undefined" && typeof window !== "undefined") window["glob
         this.done = obj.done;
         this.opt = obj.opt || {};
         this.result = undefined;
+    };
+    //}}}
+    //{{{style
+    qp.Client.prototype.style = function(style) {
+        if(typeof style === "function") {
+            this.styleFn = style;
+        } else {
+            this.styleFn = function() { return style; };
+        }
+        if(qp.env.html5) {
+            qp.css.update(this.styleFn);
+        }
     };
     //}}}
     //{{{title
