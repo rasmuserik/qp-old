@@ -1,5 +1,5 @@
 /*jshint sub:true*/
-/*global global COMPILED PLATFORM_NODEJS PLATFORM_HTML5 process setTimeout location require console window localStorage document module __dirname __filename*/
+/*global global COMPILED PLATFORM_NODEJS PLATFORM_HTML5 process setTimeout location require console window localStorage document module __dirname __filename clearTimeout*/
 /**
  * The qp module is a collection of utilities.
  * @namespace
@@ -31,7 +31,7 @@ qp.arr = {};
 qp.route = {};
 /**@namespace*/
 qp.dev = {};
-if (typeof global === "undefined") global = this;
+if (typeof global === "undefined" && typeof window !== "undefined") window["global"] = window;
 (function() {
     "use strict";
     // environment {{{
@@ -115,7 +115,7 @@ if (typeof global === "undefined") global = this;
             self.fail("timeout after " + time + "ms");
             self.done();
         }, time);
-    } //}}}
+    }; //}}}
     TestSuite.prototype.done = function() { //{{{
         if (!this._finished) {
             this._finished = true;
@@ -162,7 +162,7 @@ if (typeof global === "undefined") global = this;
         return key + "{" + qp.css.toString(val) + "}";
     }
     qp.css.toString = function(css) {
-        var result = ""
+        var result = "";
         for (var key in css) {
             var val = css[key];
             if (qp.obj.isObject(val)) {
@@ -192,7 +192,7 @@ if (typeof global === "undefined") global = this;
     /** @todo */
     qp.ui.showLoadingIndicator = function(opt) {
         console.log("qp.ui.showLoadingIndicator not implemented yet");
-    }
+    };
     //}}}
     //}}}
     //{{{obj
@@ -216,7 +216,7 @@ if (typeof global === "undefined") global = this;
                 result[qp.str.urlUnescape(keyval.slice(0, splitpos))] = qp.str.urlUnescape(keyval.slice(splitpos + 1));
             }
         });
-        return result
+        return result;
     };
     //}}}
     //{{{isObject
@@ -755,6 +755,7 @@ if (typeof global === "undefined") global = this;
          * @return {undefined}
          */
         function newFn(callback) {
+            /*jshint validthis:true */
             if (callback) {
                 callbacks.push(callback);
             }
@@ -831,7 +832,7 @@ if (typeof global === "undefined") global = this;
      * @return {string}
      */
     qp.str.urlEscape = function(str) {
-        return str.replace(/[^a-zA-Z0-9_.-]/g, function(c) {
+        return str.replace(/[^a-zA-Z0-9_.\-]/g, function(c) {
             if (c > 128) throw "unicode not yet supported";
             return "%" + ((256 + c.charCodeAt(0)).toString(16)).slice(1).toUpperCase();
         });
@@ -974,7 +975,7 @@ if (typeof global === "undefined") global = this;
     }; //}}}
     //{{{read
     qp.sys.read = function(url, opt, callback) {
-        var data;
+        var data, req;
         if (opt.post) {
             data = qp.obj.urlEncode(opt.post);
         }
@@ -999,7 +1000,7 @@ if (typeof global === "undefined") global = this;
                     };
                 }
 
-                var req = client["request"](options, function(res) {
+                req = client["request"](options, function(res) {
                     var acc = "";
                     res["on"]("data", function(d) {
                         acc += d;
@@ -1020,7 +1021,7 @@ if (typeof global === "undefined") global = this;
             //}}}
             //{{{if html5
         } else if (qp.env.html5) {
-            var req = new window.XMLHttpRequest();
+            req = new window.XMLHttpRequest();
             var method = opt.post ? "POST" : "GET";
             req.open(method, url, true);
             req.onreadystatechange = function(e) {
