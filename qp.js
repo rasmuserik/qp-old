@@ -10,6 +10,8 @@ qp.platform = {};
 /**@namespace*/
 qp.fn = {};
 /**@namespace*/
+qp.css = {};
+/**@namespace*/
 qp.ui = {};
 /**@namespace*/
 qp.sys = {};
@@ -60,6 +62,36 @@ if (typeof global === "undefined") global = this;
     if (qp.platform.nodejs) {
         var fs = require("fs");
     }
+    //{{{css
+    //{{{toString
+    function cssBrowserName(str) {
+        return str.replace(/[A-Z]/, function(c) {
+            return "-" + c.toLowerCase();
+        });
+    }
+    function cssDeclToStr(key, val) {
+        if(typeof val === "number") {
+            val = val + "px";
+        }
+        return cssBrowserName(key) + ":" + val + ";";
+    }
+    function cssRuleToStr(key, val) {
+        return "key{" + qp.css.toString(val) + "}";
+    }
+    qp.css.toString = function(css) {
+        var result = ""
+        for(var key in css) {
+            var val = css[key];
+            if(qp.obj.isObject(val)) {
+                result += cssRuleToStr(key, val);
+            } else {
+                result += cssDeclToStr(key, val);
+            }
+        }
+        return result;
+    };
+    //}}}
+    //}}}
     //{{{ui
     //{{{showLoadingIndicator
     /** @todo */
@@ -94,7 +126,7 @@ if (typeof global === "undefined") global = this;
     //}}}
     //{{{isObject
     qp.obj.isObject = function(obj) {
-        return typeof obj === "object" && obj !== null && obj.constructor === Object;
+        return obj !== null && typeof obj === "object" && obj !== null && obj.constructor === Object;
     };
     //}}}
     //{{{extend
@@ -110,6 +142,28 @@ if (typeof global === "undefined") global = this;
         }
         return target;
     }; //}}}
+    //{{{recursiveExtend
+    /** Recursively copy elements from a list of objects onto target
+     * @type {function(Object, ...[Object]): Object}
+     */
+    qp.obj.recursiveExtend = function(target) {
+        for (var i = 1; i < arguments.length; ++i) {
+            var obj = arguments[i];
+            for (var key in obj) {
+                var val = obj[key];
+                if(qp.obj.isObject(val)) {
+                    if(!qp.obj.isObject(target[key])) {
+                        target[key] = {};
+                    }
+                    qp.obj.recursiveExtend(target[key], val);
+                } else {
+                    target[key] = val;
+                }
+            }
+        }
+        return target;
+    };
+    //}}}
     //{{{get
     qp.obj.get = function(obj, key, defaultVal) {
         var result = obj[key];
