@@ -6,7 +6,7 @@
  */
 var qp = {};
 /**@namespace*/
-qp.platform = {};
+qp.env = {};
 /**@namespace*/
 qp.fn = {};
 /**@namespace*/
@@ -34,9 +34,9 @@ if (typeof global === "undefined") global = this;
     "use strict";
     // environment {{{
     /** @type {boolean} */
-    qp.platform.nodejs = typeof PLATFORM_NODEJS !== "undefined" ? PLATFORM_NODEJS : typeof process !== "undefined";
+    qp.env.nodejs = typeof PLATFORM_NODEJS !== "undefined" ? PLATFORM_NODEJS : typeof process !== "undefined";
     /** @type {boolean} */
-    qp.platform.html5 = typeof PLATFORM_HTML5 !== "undefined" ? PLATFORM_HTML5 : !qp.platform.nodejs;
+    qp.env.html5 = typeof PLATFORM_HTML5 !== "undefined" ? PLATFORM_HTML5 : !qp.env.nodejs;
     /** @type {string} */
     qp.host = "localhost";
     /** @type {number} */
@@ -44,13 +44,13 @@ if (typeof global === "undefined") global = this;
     // }}}
     // setup {{{
     if (typeof BUILTIN_ROUTES !== "undefined" ? BUILTIN_ROUTES : true) {
-        if (qp.platform.nodejs) {
+        if (qp.env.nodejs) {
             global["CLOSURE_BASE_PATH"] = __dirname + "/node_modules/qp-external/closure-library/closure/goog/";
             require("closure")["Closure"](global);
         }
         if (typeof module !== "undefined") {
             module["exports"] = function(moduleGlobal) {
-                if (qp.platform.nodejs) {
+                if (qp.env.nodejs) {
                     moduleGlobal["CLOSURE_BASE_PATH"] = global["CLOSURE_BASE_PATH"];
                     require("closure")["Closure"](moduleGlobal);
                 }
@@ -67,7 +67,7 @@ if (typeof global === "undefined") global = this;
         qp.tests[name] = fn;
     };
     // }}}
-    if (qp.platform.nodejs) {
+    if (qp.env.nodejs) {
         var fs = require("fs");
     }
     //{{{css
@@ -707,7 +707,7 @@ if (typeof global === "undefined") global = this;
      * @return {undefined}
      */
     qp.fn.nextTick = function(fn) {
-        if (qp.platform.nodejs) {
+        if (qp.env.nodejs) {
             process["nextTick"](fn);
         } else {
             setTimeout(fn, 0);
@@ -828,7 +828,7 @@ if (typeof global === "undefined") global = this;
      * @param {string} path
      */
     qp.sys.mkdir = function(path) {
-        if (qp.platform.nodejs) {
+        if (qp.env.nodejs) {
             if (!fs["existsSync"](path)) {
                 var splitpath = path.split("/");
                 while (!splitpath[splitpath.length - 1]) {
@@ -846,7 +846,7 @@ if (typeof global === "undefined") global = this;
      * @param {function(...[*])} callback
      */
     qp.sys.cp = function(src, dst, callback) {
-        if (qp.platform.nodejs) {
+        if (qp.env.nodejs) {
             require("util")["pump"](fs["createReadStream"](src), fs["createWriteStream"](dst), callback);
         }
     }; //}}}
@@ -855,7 +855,7 @@ if (typeof global === "undefined") global = this;
      * @param {string} filename
      */
     qp.sys.mtime = function(filename) {
-        if (qp.platform.nodejs) {
+        if (qp.env.nodejs) {
             return qp.fn.trycatch(function() {
                 return fs["statSync"](filename).mtime.getTime();
             }, function() {
@@ -900,7 +900,7 @@ if (typeof global === "undefined") global = this;
             data = qp.obj.urlEncode(opt.post);
         }
         //{{{if nodejs
-        if (qp.platform.nodejs) {
+        if (qp.env.nodejs) {
             var options = require("url")["parse"](url);
 
             if (qp.str.startsWith(url, "http")) {
@@ -940,7 +940,7 @@ if (typeof global === "undefined") global = this;
             }
             //}}}
             //{{{if html5
-        } else if (qp.platform.html5) {
+        } else if (qp.env.html5) {
             var req = new window.XMLHttpRequest();
             var method = opt.post ? "POST" : "GET";
             req.open(method, url, true);
@@ -966,7 +966,7 @@ if (typeof global === "undefined") global = this;
     };
     //}}}
     // TODO local storage {{{
-    if (qp.platform.nodejs) {
+    if (qp.env.nodejs) {
         (function() {
             //TODO: change api
             var db = qp.fn.trycatch(function() {
@@ -999,7 +999,7 @@ if (typeof global === "undefined") global = this;
         };
     } //}}}
     qp.test("qp.sys", function(test) {//{{{
-        if (qp.platform.nodejs) {
+        if (qp.env.nodejs) {
             var jsontest = test.create("load/save-JSON");
             var result = qp.sys.loadJSONSync("/does/not/exists", 1);
             jsontest.assertEqual(result, 1);
@@ -1440,11 +1440,11 @@ if (typeof global === "undefined") global = this;
     qp.route.systemCurrent = function() {
         var route = {};
 
-        if (qp.platform.nodejs) {
+        if (qp.env.nodejs) {
             var argv = process["argv"];
             route.path = argv[2] || "";
         }
-        if (qp.platform.html5) {
+        if (qp.env.html5) {
             route.path = (location.hash || location.pathname).slice(1);
         }
 
@@ -1461,7 +1461,7 @@ if (typeof global === "undefined") global = this;
         var route = qp.route.systemCurrent();
         var fn = qp.route.lookup(route);
         var doneFn;
-        if (qp.platform.html5) {
+        if (qp.env.html5) {
             doneFn = function() {
                 var result = this.result;
                 if (result.qp_jsonml) {
@@ -1640,7 +1640,7 @@ if (typeof global === "undefined") global = this;
     //}}}
     //{{{register default routes
     if (typeof BUILTIN_ROUTES !== "undefined" ? BUILTIN_ROUTES : true) {
-        if (qp.platform.nodejs) {
+        if (qp.env.nodejs) {
             qp.route.add("jsdoc", qp.route.jsdoc);
             qp.route.add("build", qp.route.build);
             qp.route.add("test", qp.route.test);
