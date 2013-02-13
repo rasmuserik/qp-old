@@ -6,6 +6,9 @@ function defaultFn(client) {
     ]);
 }
 
+qp.css.add(function(info) {
+    return {"body": {"background": "red", margin: info.height/4}};
+});
 qp.route.add("hello", defaultFn);
 qp.route.add(" ", function(client) {
     client.json(client);

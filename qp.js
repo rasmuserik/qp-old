@@ -186,6 +186,43 @@ if (typeof global === "undefined" && typeof window !== "undefined") window["glob
         test.done();
     });
     //}}}
+    //{{{add
+    qp.css.add = function(fn) {
+        if(!qp._styleFns) { qp._styleFns = []; }
+        qp._styleFns.push(fn);
+        qp.css.update();
+    };
+    //}}}
+    //{{{calc
+    qp.css.calc = function(opt) {
+        if(!qp._styleFns) return {};
+        opt = qp.obj.recursiveExtend({}, opt);
+        opt.css = opt.css || {};
+        for(var i = 0; i < qp._styleFns.length; ++i) {
+            var res = qp._styleFns[i](opt);
+            if(qp.obj.isObject(res)) {
+                qp.obj.recursiveExtend(opt.css, res);
+            }
+        }
+        return opt.css
+    }
+    //}}}
+    //{{{
+    qp.css.update = function() {
+        if(qp.env.html5) {
+            var obj = {
+                width: window.innerWidth, 
+                height: window.innerHeight
+            };
+            if(!qp._styleTag) {
+                qp._styleTag = document.createElement("style");
+                document.head.appendChild(qp._styleTag);
+            }
+            qp._styleTag["innerHTML"] = qp.css.toString(qp.css.calc(obj));
+            window.addEventListener("resize", qp.css.update);
+        } 
+    }
+    //}}}
     //}}}
     //{{{ui
     //{{{showLoadingIndicator
