@@ -14,6 +14,8 @@ qp.css = {};
 /**@namespace*/
 qp.ui = {};
 /**@namespace*/
+qp.graph = {};
+/**@namespace*/
 qp.sys = {};
 /**@namespace*/
 qp.set = {};
@@ -1271,7 +1273,7 @@ if (typeof global === "undefined") global = this;
         run();
     }; //}}}
     */
-    qp.graphUpdateParents = function(graph) { //{{{
+    qp.graph.updateParents = function(graph) { //{{{
         qp.obj.forEach(graph, function(_, node) {
             node.parents = {};
         });
@@ -1281,9 +1283,9 @@ if (typeof global === "undefined") global = this;
             });
         });
     }; //}}}
-    qp.traverseDAG = function(graph) { //{{{
+    qp.graph.traverseDAG = function(graph) { //{{{
         var result = [];
-        qp.graphUpdateParents(graph);
+        qp.graph.updateParents(graph);
         var visited = {};
         var prevLength = -1;
         while (result.length !== prevLength) {
@@ -1307,7 +1309,7 @@ if (typeof global === "undefined") global = this;
         }
         return result;
     }; //}}}
-    qp.ensureNode = function(graph, name) { //{{{
+    qp.graph.ensureNode = function(graph, name) { //{{{
         if (!graph[name]) {
             graph[name] = {
                 id: name,
@@ -1315,22 +1317,22 @@ if (typeof global === "undefined") global = this;
             };
         }
     }; //}}}
-    qp.addEdge = function(graph, from, to) { //{{{
-        qp.ensureNode(graph, from);
-        qp.ensureNode(graph, to);
+    qp.graph.addEdge = function(graph, from, to) { //{{{
+        qp.graph.ensureNode(graph, from);
+        qp.graph.ensureNode(graph, to);
         graph[from].children[to] = graph[from].children[to] || {};
     }; //}}}
-    qp.testGraph = function(test) { //{{{
+    qp.test("qp.graph", function(test) { //{{{
         var g = {};
-        qp.addEdge(g, "a", "b");
-        qp.addEdge(g, "b", "c");
-        qp.addEdge(g, "a", "c");
-        test.assertEqual(JSON.stringify(qp.traverseDAG(g)), "[\"a\",\"b\",\"c\"]");
-        qp.graphUpdateParents(g);
+        qp.graph.addEdge(g, "a", "b");
+        qp.graph.addEdge(g, "b", "c");
+        qp.graph.addEdge(g, "a", "c");
+        test.assertEqual(JSON.stringify(qp.graph.traverseDAG(g)), "[\"a\",\"b\",\"c\"]");
+        qp.graph.updateParents(g);
         test.assert(qp.obj.empty(g["a"].parents), "a has no parents");
         test.assert(g["c"].parents["a"], "c has parent a");
         test.done();
-    }; //}}}
+    }); //}}}
     // }}}
     // Client {{{
     //{{{constructor
