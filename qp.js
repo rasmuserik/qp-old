@@ -59,6 +59,14 @@ if (typeof global === "undefined") global = this;
         }
     }
     //}}}
+    // test("name", fn{...}) {{{
+    qp.test = function(name, fn) {
+        if(!qp.tests) {
+            qp.tests = {};
+        }
+        qp.tests[name] = fn;
+    };
+    // }}}
     if (qp.platform.nodejs) {
         var fs = require("fs");
     }
@@ -90,6 +98,17 @@ if (typeof global === "undefined") global = this;
         }
         return result;
     };
+    qp.test("qp.css.toString", function(test) {
+        test.assertEqual(qp.css.toString({
+            "body": {
+                "background": "red",
+                "margin": 0
+            },
+            ".blue": {
+                "textColor": "blue"
+            }
+        }, "body{background:red;margin:0px;}.blue{text-color:blue;}");
+    });
     //}}}
     //}}}
     //{{{ui
@@ -212,7 +231,7 @@ if (typeof global === "undefined") global = this;
     qp.obj.empty = function(obj) {
         return Object.keys(obj).length === 0;
     }; //}}}
-    // objForEach {{{
+    // forEach {{{
     /** call a function on each key/val
      * @param {!Object} obj object on which element to apply the function.
      * @param {function(string,*)} fn the function.
@@ -221,7 +240,21 @@ if (typeof global === "undefined") global = this;
         Object.keys(obj).forEach(function(key) {
             fn(key, obj[key]);
         });
-    }; //}}}
+    }; 
+    qp.test("qp.obj.forEach", function(test) {
+        var count = 0;
+        var obj = {
+            a: 1,
+            b: 2
+        };
+        qp.obj.forEach(obj, function(key, val) {
+            test.assert(key && obj[key] === val, "objforeach");
+            ++count;
+        });
+        test.assertEqual(count, 2, "objforeach count");
+        test.done();
+    });
+    //}}}
     //{{{values
     /** @return {Array} the list of values in the object. */
     qp.obj.values = function(obj) {
@@ -771,7 +804,14 @@ if (typeof global === "undefined") global = this;
      */
     qp.str.startsWith = function(str, prefix) {
         return str.slice(0, prefix.length) === prefix;
-    }; //}}}
+    }; 
+    qp.test("qp.str.startsWith", function(test){
+        test.assert(qp.str.startsWith("foobarbaz", "foobar"), "strstartswith1");
+        test.assert(!qp.str.startsWith("qoobarbaz", "foobar"), "strstartswith2");
+        test.assert(qp.str.startsWith("foobarbaz", ""), "strstartswith3");
+        test.assert(!qp.str.startsWith("foo", "foobar"), "strstartswith4");
+        test.done();
+    });//}}}
     //}}}
     //{{{sys
     //exec{{{
@@ -958,6 +998,21 @@ if (typeof global === "undefined") global = this;
             }
         };
     } //}}}
+    qp.test("qp.sys", function(test) {//{{{
+        if (qp.platform.nodejs) {
+            var jsontest = test.create("load/save-JSON");
+            var result = qp.sys.loadJSONSync("/does/not/exists", 1);
+            jsontest.assertEqual(result, 1);
+            qp.sys.saveJSON("/tmp/exports-save-json-testb", 2);
+            qp.sys.saveJSON("/tmp/exports-save-json-test", 2, function() {
+                result = qp.sys.loadJSONSync("/tmp/exports-save-json-test", 1);
+                jsontest.assertEqual(result, 2);
+                jsontest.done();
+            });
+        }
+        test.done();
+    });
+    //}}}
     //}}}
     // qp.V2d {{{
     /** simple 2d vector
@@ -1202,7 +1257,6 @@ if (typeof global === "undefined") global = this;
         test.done();
     }; //}}}
     // }}}
-    // test {{{
     // TestSuite class {{{
     /** @constructor */
     function TestSuite(name, doneFn) { //{{{
@@ -1252,63 +1306,6 @@ if (typeof global === "undefined") global = this;
         }
     }; //}}}
     //}}}
-    function testClient(test) { //{{{
-        test.done();
-    }
-    if (qp.platform.html5) {
-        window["testClient"] = testClient;
-    }
-    //}}}
-    function runTests() { //{{{
-        var Browser = require("zombie");
-        var test = new TestSuite("BibData", process["exit"]);
-
-        // testServer(test.suite("server"));
-
-        // start the client-test via zombie
-        var clientSuite = test.suite("client");
-        var browser = new Browser();
-        browser["visit"]("http://" + qp.host + ":" + qp.port, {
-            debug: true
-        })["then"](function() {
-            browser["window"]["testClient"](clientSuite);
-        })["fail"](function() {
-            clientSuite.fail("could not start client-test");
-            test.done();
-        });
-        test.done();
-    } //}}}
-    // }}}
-    // Testrunner {{{
-    qp.test = function(test) {
-        if (qp.platform.nodejs) {
-            var jsontest = test.create("load/save-JSON");
-            var result = qp.sys.loadJSONSync("/does/not/exists", 1);
-            jsontest.assertEqual(result, 1);
-            qp.sys.saveJSON("/tmp/exports-save-json-testb", 2);
-            qp.sys.saveJSON("/tmp/exports-save-json-test", 2, function() {
-                result = qp.sys.loadJSONSync("/tmp/exports-save-json-test", 1);
-                jsontest.assertEqual(result, 2);
-                jsontest.done();
-            });
-        }
-        var count = 0;
-        var obj = {
-            a: 1,
-            b: 2
-        };
-        qp.obj.forEach(obj, function(key, val) {
-            test.assert(key && obj[key] === val, "objforeach");
-            ++count;
-        });
-        test.assertEqual(count, 2, "objforeach count");
-        test.assert(qp.str.startsWith("foobarbaz", "foobar"), "strstartswith1");
-        test.assert(!qp.str.startsWith("qoobarbaz", "foobar"), "strstartswith2");
-        test.assert(qp.str.startsWith("foobarbaz", ""), "strstartswith3");
-        test.assert(!qp.str.startsWith("foo", "foobar"), "strstartswith4");
-        test.done();
-    };
-    // }}}
     // Client {{{
     //{{{constructor
     /** @constructor */
@@ -1636,11 +1633,17 @@ if (typeof global === "undefined") global = this;
         });
     };
     //}}}
+    //{{{test
+    qp.route.test = function(client) {
+        console.log(qp.tests);
+    };
+    //}}}
     //{{{register default routes
     if (typeof BUILTIN_ROUTES !== "undefined" ? BUILTIN_ROUTES : true) {
         if (qp.platform.nodejs) {
             qp.route.add("jsdoc", qp.route.jsdoc);
             qp.route.add("build", qp.route.build);
+            qp.route.add("test", qp.route.test);
             qp.route.add("dev-server", qp.route.devServer);
         }
     }
