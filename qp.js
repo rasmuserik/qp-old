@@ -1,13 +1,20 @@
 /*jshint sub:true*/
-/*global global BUILTIN_ROUTES PLATFORM_NODEJS PLATFORM_HTML5 process setTimeout location require console window localStorage document module __dirname __filename*/
+/*global global COMPILED PLATFORM_NODEJS PLATFORM_HTML5 process setTimeout location require console window localStorage document module __dirname __filename clearTimeout*/
 /**
  * The qp module is a collection of utilities.
  * @namespace
  */
 var qp = {};
-qp.platform = {};
+/**@namespace*/
+qp.env = {};
 /**@namespace*/
 qp.fn = {};
+/**@namespace*/
+qp.css = {};
+/**@namespace*/
+qp.ui = {};
+/**@namespace*/
+qp.graph = {};
 /**@namespace*/
 qp.sys = {};
 /**@namespace*/
@@ -24,42 +31,223 @@ qp.arr = {};
 qp.route = {};
 /**@namespace*/
 qp.dev = {};
+if (typeof global === "undefined" && typeof window !== "undefined") window["global"] = window;
 (function() {
     "use strict";
     // environment {{{
-    /** @type {boolean} */
-    qp.platform.nodejs = typeof PLATFORM_NODEJS !== "undefined" ? PLATFORM_NODEJS : typeof process !== "undefined";
-    /** @type {boolean} */
-    qp.platform.html5 = typeof PLATFORM_HTML5 !== "undefined" ? PLATFORM_HTML5 : !qp.platform.nodejs;
+    /** Are we in a node.js environment @type {boolean} */
+    qp.env.nodejs = typeof PLATFORM_NODEJS !== "undefined" ? PLATFORM_NODEJS : typeof process !== "undefined";
+    /** Are we in a html5 environment @type {boolean} */
+    qp.env.html5 = typeof PLATFORM_HTML5 !== "undefined" ? PLATFORM_HTML5 : !qp.env.nodejs;
+    /** Have we been compiled by the google closure compiler @type {boolean} */
+    qp.env.compiled = typeof COMPILED !== "undefined" ? COMPILED : false;
+    /** Whether unit-tests should be initialised.
+     * If false, then the closure compiler will remove
+     * all traces of unit tests from the source code.
+     * @type {boolean}
+     */
+    qp.env.test = !qp.env.compiled;
     /** @type {string} */
     qp.host = "localhost";
     /** @type {number} */
     qp.port = 1234;
     // }}}
     // setup {{{
-    if (typeof BUILTIN_ROUTES !== "undefined" ? BUILTIN_ROUTES : true) {
-        if (qp.platform.nodejs) {
-            global["CLOSURE_BASE_PATH"] = __dirname + "/node_modules/qp-external/closure-library/closure/goog/"
+    if (!qp.env.compiled) {
+        if (qp.env.nodejs) {
+            global["CLOSURE_BASE_PATH"] = __dirname + "/node_modules/qp-external/closure-library/closure/goog/";
             require("closure")["Closure"](global);
         }
         if (typeof module !== "undefined") {
             module["exports"] = function(moduleGlobal) {
-                if (qp.platform.nodejs) {
+                if (qp.env.nodejs) {
                     moduleGlobal["CLOSURE_BASE_PATH"] = global["CLOSURE_BASE_PATH"];
                     require("closure")["Closure"](moduleGlobal);
                 }
                 moduleGlobal.qp = qp;
-            }
+            };
         }
     }
     //}}}
-    if (qp.platform.nodejs) {
-        var fs = require("fs");
+    // test("name", fn{...}) {{{
+    qp.test = function(name, fn) {
+        if (qp.env.test) {
+            if (!qp.tests) {
+                qp.tests = {};
+            }
+            qp.tests[name] = fn;
+        }
+    };
+    // }}}
+    // TestSuite class {{{
+    /** @constructor */
+    function TestSuite(name, doneFn) { //{{{
+        this.name = name;
+        this.suites = 1;
+        this.errorCount = 0;
+        this.timeout(10000);
+        if (doneFn) {
+            this.doneFn = doneFn;
+        }
+    } //}}}
+    TestSuite.prototype.fail = function(desc) { //{{{
+        ++this.errorCount;
+        console.log("Fail in " + this.name + ": " + desc);
+    }; //}}}
+    TestSuite.prototype.assert = function(expr, desc) { //{{{
+        if (!expr) {
+            ++this.errorCount;
+            console.log("Assert in " + this.name + ": " + desc);
+        }
+    }; //}}}
+    TestSuite.prototype.assertEqual = function(expr1, expr2, desc) { //{{{
+        if (expr1 !== expr2) {
+            ++this.errorCount;
+            console.log("Assert not equal" + this.name + ": " + (desc || ""), "\n    ", expr1, "\n!== ", expr2);
+        }
+    }; //}}}
+    TestSuite.prototype.timeout = function(time) { //{{{
+        if (this._timeout !== undefined) {
+            clearTimeout(this._timeout);
+        }
+        var self = this;
+        this._timeout = setTimeout(function() {
+            self.fail("timeout after " + time + "ms");
+            self.done();
+        }, time);
+    }; //}}}
+    TestSuite.prototype.done = function() { //{{{
+        if (!this._finished) {
+            this._finished = true;
+            this.suites -= 1;
+            this._cleanup();
+        }
+    }; //}}}
+    TestSuite.prototype.suite = function(name) { //{{{
+        var result = new TestSuite(this.name + "#" + name);
+        result.parent = this;
+        this.suites += 1;
+        return result;
+    }; //}}}
+    TestSuite.prototype._cleanup = function() { //{{{
+        if (this.suites === 0) {
+            clearTimeout(this._timeout);
+            if (this.doneFn) {
+                this.doneFn(this.errorCount);
+            }
+            if (this.parent) {
+                this.parent.errorCount += this.errorCount;
+                this.parent.suites -= 1;
+                this.parent._cleanup();
+            }
+        }
+    }; //}}}
+    //}}}
+    //{{{css
+    //{{{toString
+    function cssBrowserName(str) {
+        return str.replace(/[A-Z]/, function(c) {
+            return "-" + c.toLowerCase();
+        });
     }
+
+    function cssDeclToStr(key, val) {
+        if (typeof val === "number") {
+            val = val + "px";
+        }
+        return cssBrowserName(key) + ":" + val + ";";
+    }
+
+    function cssRuleToStr(key, val) {
+        return key + "{" + qp.css.toString(val) + "}";
+    }
+    qp.css.toString = function(css) {
+        var result = "";
+        for (var key in css) {
+            var val = css[key];
+            if (qp.obj.isObject(val)) {
+                result += cssRuleToStr(key, val);
+            } else {
+                result += cssDeclToStr(key, val);
+            }
+        }
+        return result;
+    };
+    qp.test("qp.css.toString", function(test) {
+        test.assertEqual(qp.css.toString({
+            "body": {
+                "background": "red",
+                "margin": 0
+            },
+            ".blue": {
+                "textColor": "blue"
+            }
+        }), "body{background:red;margin:0px;}.blue{text-color:blue;}");
+        test.done();
+    });
+    //}}}
+    //{{{update
+    function html5cssUpdate() {
+        var throttled = qp.fn.throttle(html5cssUpdate, 30);
+        var view = {
+            width: window.innerWidth, 
+            height: window.innerHeight
+        };
+        if(!qp._styleTag) {
+            qp._styleTag = document.createElement("style");
+            document.head.appendChild(qp._styleTag);
+            window.addEventListener("resize", throttled);
+        }
+        var style = qp._styleFn(view);
+        if(typeof style !== "string") {
+            style = qp.css.toString(style);
+        }
+        qp._styleTag["innerHTML"] = style;
+    }
+    qp.css.update = function(styleFn) {
+        qp._styleFn = styleFn || qp._styleFn;
+        if(!styleFn) return;
+        if(qp.env.html5) {
+            html5cssUpdate();
+        } 
+    }
+    //}}}
+    //}}}
+    //{{{ui
+    //{{{showLoadingIndicator
+    //TODO
+    qp.ui.showLoadingIndicator = function(opt) {
+        console.log("qp.ui.showLoadingIndicator not implemented yet");
+    };
+    //}}}
+    //}}}
     //{{{obj
+    //{{{urlEncode
+    qp.obj.urlEncode = function(obj) {
+        var acc = [];
+        for (var key in obj) {
+            acc.push(qp.str.urlEscape(key) + "=" + qp.str.urlEscape(obj[key]));
+        }
+        return acc.join("&");
+    };
+    //}}}
+    //{{{urlDecode
+    qp.obj.urlDecode = function(str) {
+        var result = {};
+        str.split("&").forEach(function(keyval) {
+            var splitpos = keyval.indexOf("=");
+            if (splitpos === -1) {
+                result[qp.str.urlUnescape(keyval)] = true;
+            } else {
+                result[qp.str.urlUnescape(keyval.slice(0, splitpos))] = qp.str.urlUnescape(keyval.slice(splitpos + 1));
+            }
+        });
+        return result;
+    };
+    //}}}
     //{{{isObject
     qp.obj.isObject = function(obj) {
-        return typeof obj === object && obj !== null && obj.constructor === Object;
+        return obj !== null && typeof obj === "object" && obj !== null && obj.constructor === Object;
     };
     //}}}
     //{{{extend
@@ -75,6 +263,28 @@ qp.dev = {};
         }
         return target;
     }; //}}}
+    //{{{recursiveExtend
+    /** Recursively copy elements from a list of objects onto target
+     * @type {function(Object, ...[Object]): Object}
+     */
+    qp.obj.recursiveExtend = function(target) {
+        for (var i = 1; i < arguments.length; ++i) {
+            var obj = arguments[i];
+            for (var key in obj) {
+                var val = obj[key];
+                if (qp.obj.isObject(val)) {
+                    if (!qp.obj.isObject(target[key])) {
+                        target[key] = {};
+                    }
+                    qp.obj.recursiveExtend(target[key], val);
+                } else {
+                    target[key] = val;
+                }
+            }
+        }
+        return target;
+    };
+    //}}}
     //{{{get
     qp.obj.get = function(obj, key, defaultVal) {
         var result = obj[key];
@@ -82,7 +292,7 @@ qp.dev = {};
             result = defaultVal;
         }
         return result;
-    }
+    };
     //}}}
     //{{{listAdd
     qp.obj.listAdd = function(obj, key, val) {
@@ -92,13 +302,13 @@ qp.dev = {};
         } else {
             obj[key] = [val];
         }
-    }
+    };
     //}}}
     //{{{map
     /** map a function across the values of an object, and return a new object with the resulting values
-     * @param {!Object} obj
-     * @param {function(*)} fn
-     * @return {Object}
+     * @param {!Object} obj the object.
+     * @param {function(*)} fn function to map across each value of the object.
+     * @return {Object} new object with keys as in obj, and values mapped.
      */
     qp.obj.map = function(obj, fn) {
         var result = {};
@@ -109,45 +319,60 @@ qp.dev = {};
     }; //}}}
     //{{{notEmpty
     /** Check if an object is an empty object
-     * @param {!Object} obj
-     * @return {boolean}
+     * @param {!Object} obj the object to test if is empty.
+     * @return {boolean} false if object is empty, else true.
      */
     qp.obj.notEmptyObject = function(obj) {
         return Object.keys(obj).length !== 0;
     }; //}}}
     //{{{empty
     /** Check if an object is an empty object
-     * @param {!Object} obj
-     * @return {boolean}
+     * @param {!Object} obj the object to test if empty.
+     * @return {boolean} true if object is empty, otherwise false.
      */
     qp.obj.empty = function(obj) {
         return Object.keys(obj).length === 0;
     }; //}}}
-    // objForEach {{{
+    // forEach {{{
     /** call a function on each key/val
-     * @param {!Object} obj
-     * @param {function(string,*)} fn
+     * @param {!Object} obj object on which element to apply the function.
+     * @param {function(string,*)} fn the function.
      */
     qp.obj.forEach = function(obj, fn) {
         Object.keys(obj).forEach(function(key) {
             fn(key, obj[key]);
         });
-    }; //}}}
+    };
+    qp.test("qp.obj.forEach", function(test) {
+        var count = 0;
+        var obj = {
+            a: 1,
+            b: 2
+        };
+        qp.obj.forEach(obj, function(key, val) {
+            test.assert(key && obj[key] === val, "objforeach");
+            ++count;
+        });
+        test.assertEqual(count, 2, "objforeach count");
+        test.done();
+    });
+    //}}}
     //{{{values
+    /** @return {Array} the list of values in the object. */
     qp.obj.values = function(obj) {
         var result = [];
         for (var key in obj) {
             result.push(obj[key]);
         }
         return result;
-    } //}}}
+    }; //}}}
     //}}}
     //{{{arr
     //listpp{{{
     /** Prettyprint a list
-     * @param {Array|string} list list to prettyprint
-     * @param {string=} indent string to use as indent (some spaces or tabs)
-     * @return {string} text representation of indented list
+     * @param {Array|string} list list to prettyprint.
+     * @param {string=} indent string to use as indent (some spaces or tabs).
+     * @return {string} text representation of indented list.
      */
     qp.arr.listpp = function(list, indent) {
         indent = indent || "  ";
@@ -169,8 +394,8 @@ qp.dev = {};
     }; //}}}
     //{{{flatten
     /** collapse nested arrays into a single new array
-     * @param {Array} arr
-     * @return {Array}
+     * @param {Array} arr array, possibly containing arrays, to flatten.
+     * @return {Array} flattened array.
      */
     qp.arr.flatten = function(arr) {
         var acc = [];
@@ -186,8 +411,8 @@ qp.dev = {};
     }; //}}}
     //shuffle{{{
     /** Put an array in random order (in-place)
-     * @param {Array} arr the array to shuffle
-     * @return {Array}
+     * @param {Array} arr the array to shuffle.
+     * @return {Array} the same array, which has now been shuffled.
      */
     qp.arr.shuffle = function(arr) {
         var i = arr.length;
@@ -202,23 +427,25 @@ qp.dev = {};
     }; //}}}
     //arrayPickRandom{{{
     /** Pick a random element from an array
-     * @param {Array} arr
+     * @param {Array} arr array to pick from.
+     * @return {*} an element from the array.
      */
     qp.arr.pickRandom = function(arr) {
         return arr[Math.random() * arr.length | 0];
     }; //}}}
     //asyncArrayForEach{{{
     /** apply an asynchronous function to each array element
-     * @param {Array} arr
-     * @param {function(*, function(...[*]))} fn
-     * @param {function(...[*])} done
+     * @param {Array} arr the array to map across.
+     * @param {function(*, function(...[*]))} fn function that will be called on each element of the array.
+     * @param {function(...[*])} done callback when done.
      */
     qp.arr.asyncForEach = function(arr, fn, done) {
         var count = arr.length;
         var cb = function() {
             if (count === 0) {
                 done();
-            }--count;
+            }
+            count = count - 1;
         };
         cb();
         arr.forEach(function(key) {
@@ -227,15 +454,15 @@ qp.dev = {};
     }; //}}}
     //}}}
     //{{{jsonml
-    var xmlEntities = { //{{{
-        lt: "<",
-        gt: ">",
-        amp: "&",
-        quot: "\"",
-        nbsp: "\xa0"
-    }; //}}}
+    var xmlEntities = {}; //{{{
+    xmlEntities["lt"] = "<";
+    xmlEntities["gt"] = ">";
+    xmlEntities["amp"] = "&";
+    xmlEntities["quot"] = "\"";
+    xmlEntities["nbsp"] = "\xa0";
+    //}}}
     //{{{fromString
-    /** @param {string} str */
+    /** @param {string} str xml encoded as string to parse. */
     qp.jsonml.fromString = function(str) {
         var errors = [];
 
@@ -382,9 +609,9 @@ qp.dev = {};
             console.log(errors);
         }
         return tag;
-    } //}}}
+    }; //}}}
     //{{{toString
-    /** @param {*} jsonml */
+    /** @param {*} jsonml xml to change into a string. */
     qp.jsonml.toString = function(jsonml) {
         if (Array.isArray(jsonml)) {
             var children;
@@ -419,8 +646,9 @@ qp.dev = {};
         } else {
             return String(jsonml);
         }
-    } //}}}
+    }; //}}}
     //{{{toDom
+    /** Transform jsonml into dom object */
     qp.jsonml.toDom = function(jsonml) {
         if (Array.isArray(jsonml)) {
             var children;
@@ -444,8 +672,9 @@ qp.dev = {};
             }
             while (pos < jsonml.length) {
                 if (jsonml[pos]) {
-                    elem.appendChild(jsonmlToDom(jsonml[pos]));
-                }++pos;
+                    elem.appendChild(qp.jsonml.toDom(jsonml[pos]));
+                }
+                pos = pos + 1;
             }
             return elem;
         } else if (typeof jsonml === "string" || typeof jsonml === "number") {
@@ -453,7 +682,7 @@ qp.dev = {};
         } else {
             return jsonml;
         }
-    } //}}}
+    }; //}}}
     //{{{isCanonical
     qp.jsonml.isCanonical = function(jsonml) {
         if (Array.isArray(jsonml)) {
@@ -487,7 +716,7 @@ qp.dev = {};
         if (typeof jsonml === "string") {
             return jsonml.trim();
         } else if (Array.isArray(jsonml)) {
-            var len = jsonml.length
+            var len = jsonml.length;
             var result = jsonml.map(qp.jsonml.filterWhitespace).filter(function(s) {
                 return s !== "";
             });
@@ -498,12 +727,12 @@ qp.dev = {};
         } else {
             return jsonml;
         }
-    } //}}}
+    }; //}}}
     //}}}
     //{{{set
     //fromArray{{{
     /** Convert a list into an object with list elements as keys, and true as value. Useful for set-like operations.
-     * @param {Array.<string>} arr 
+     * @param {Array.<string>} arr
      * @return {Object.<string,boolean>}
      */
     qp.set.fromArray = function(arr) {
@@ -525,7 +754,7 @@ qp.dev = {};
     // runonce {{{
     /** enforce a function only runs once
      * @param {function(...[*])} fn
-     * @return {function(...[*])} a new function with same type as the original function, but only executes the original function once, and otherwise just returns undefined
+     * @return {function(...[*])} a new function with same type as the original function, but only executes the original function once, and otherwise just returns undefined.
      */
     qp.fn.runonce = function(fn) {
         var execute = true;
@@ -536,22 +765,23 @@ qp.dev = {};
             }
         };
     }; //}}}
-    //throttledFn{{{
+    //throttle{{{
     /** make sure a given function is called not called to often
-     * @param {function()} fn the function to be executed
-     * @param {number=} delay how long (in ms.) should the shortest interval between function calls be. defaults 5000ms
+     * @param {function()} fn the function to be executed.
+     * @param {number=} delay how long (in ms.) should the shortest interval between function calls be. defaults 5000ms.
      * @return {function(function()=): undefined}
      */
-    qp.fn.throttledFn = function(fn, delay) {
+    qp.fn.throttle = function(fn, delay) {
         delay = delay || 5000;
         var lastRun = 0;
         var scheduled = false;
         var callbacks = [];
-        /** 
+        /**
          * @param {function()=} callback
          * @return {undefined}
          */
         function newFn(callback) {
+            /*jshint validthis:true */
             if (callback) {
                 callbacks.push(callback);
             }
@@ -571,7 +801,7 @@ qp.dev = {};
             };
             scheduled = true;
             setTimeout(run, Math.max(0, delay - (Date.now() - lastRun)));
-        };
+        }
         return newFn;
     }; //}}}
     //nextTick{{{
@@ -580,7 +810,7 @@ qp.dev = {};
      * @return {undefined}
      */
     qp.fn.nextTick = function(fn) {
-        if (qp.platform.nodejs) {
+        if (qp.env.nodejs) {
             process["nextTick"](fn);
         } else {
             setTimeout(fn, 0);
@@ -588,9 +818,9 @@ qp.dev = {};
     }; //}}}
     //trycatch{{{
     /** Functional exception handling
-     * @param {function()} fn1 function to call
-     * @param {function(*)} fn2 exception handling function, called if fn1 throw. The parameter will be execption thrown
-     * @return result from fn1 or fn2
+     * @param {function()} fn1 function to call.
+     * @param {function(*)} fn2 exception handling function, called if fn1 throw. The parameter will be execption thrown.
+     * @return {*} result from fn1 or fn2.
      */
     qp.fn.trycatch = function(fn1, fn2) {
         try {
@@ -601,6 +831,7 @@ qp.dev = {};
     }; //}}}
     //}}}
     //{{{str
+    //{{{binSplit
     qp.str.binSplit = function(str, symb) {
         var pos = str.indexOf(symb);
         if (pos === -1) {
@@ -620,6 +851,18 @@ qp.dev = {};
         return prefix + String(uniqIdCounter);
     };
     var uniqIdCounter = 0; // }}}
+    //urlEscape{{{
+    /** Unescape %-encoding into string
+     * @todo unicode
+     * @param {string} str
+     * @return {string}
+     */
+    qp.str.urlEscape = function(str) {
+        return str.replace(/[^a-zA-Z0-9_.\-]/g, function(c) {
+            if (c > 128) throw "unicode not yet supported";
+            return "%" + ((256 + c.charCodeAt(0)).toString(16)).slice(1).toUpperCase();
+        });
+    }; //}}}
     //urlUnescape{{{
     /** Unescape %-encoding into string
      * @param {string} str
@@ -658,17 +901,24 @@ qp.dev = {};
     }; //}}}
     // strStartsWith {{{
     /** check if a string has another string as a prefix
-     * @param {string} str the string to check
-     * @param {string} prefix the prefix
+     * @param {string} str the string to check.
+     * @param {string} prefix the prefix.
      * @return {boolean}
      */
     qp.str.startsWith = function(str, prefix) {
         return str.slice(0, prefix.length) === prefix;
-    }; //}}}
+    };
+    qp.test("qp.str.startsWith", function(test) {
+        test.assert(qp.str.startsWith("foobarbaz", "foobar"), "strstartswith1");
+        test.assert(!qp.str.startsWith("qoobarbaz", "foobar"), "strstartswith2");
+        test.assert(qp.str.startsWith("foobarbaz", ""), "strstartswith3");
+        test.assert(!qp.str.startsWith("foo", "foobar"), "strstartswith4");
+        test.done();
+    }); //}}}
     //}}}
     //{{{sys
     //exec{{{
-    /** Run a shell commend 
+    /** Run a shell commend
      * @param {string} cmd
      * @param {function(...[*])} callback
      */
@@ -681,7 +931,8 @@ qp.dev = {};
      * @param {string} path
      */
     qp.sys.mkdir = function(path) {
-        if (qp.platform.nodejs) {
+        var fs = require("fs");
+        if (qp.env.nodejs) {
             if (!fs["existsSync"](path)) {
                 var splitpath = path.split("/");
                 while (!splitpath[splitpath.length - 1]) {
@@ -699,7 +950,8 @@ qp.dev = {};
      * @param {function(...[*])} callback
      */
     qp.sys.cp = function(src, dst, callback) {
-        if (qp.platform.nodejs) {
+        var fs = require("fs");
+        if (qp.env.nodejs) {
             require("util")["pump"](fs["createReadStream"](src), fs["createWriteStream"](dst), callback);
         }
     }; //}}}
@@ -708,7 +960,8 @@ qp.dev = {};
      * @param {string} filename
      */
     qp.sys.mtime = function(filename) {
-        if (qp.platform.nodejs) {
+        var fs = require("fs");
+        if (qp.env.nodejs) {
             return qp.fn.trycatch(function() {
                 return fs["statSync"](filename).mtime.getTime();
             }, function() {
@@ -719,7 +972,7 @@ qp.dev = {};
     // saveJSON {{{
     /** save json to a file
      * @param {string} filename
-     * @param {*} content must be json-able
+     * @param {*} content must be json-able.
      * @param {function(*)=} callback
      */
     qp.sys.saveJSON = function(filename, content, callback) {
@@ -729,7 +982,7 @@ qp.dev = {};
     //loadJSONSync{{{
     /** Load and parse json from a file
      * @param {string} filename
-     * @param {*} defaultVal default value, or a function that yields the default value. This will be returned/called if the file cannot be loaded/parsed to json
+     * @param {*} defaultVal default value, or a function that yields the default value. This will be returned/called if the file cannot be loaded/parsed to json.
      */
     qp.sys.loadJSONSync = function(filename, defaultVal) {
         if (!defaultVal) {
@@ -746,8 +999,80 @@ qp.dev = {};
             return JSON.parse(require("fs")["readFileSync"](filename, "utf8"));
         }, fn);
     }; //}}}
+    //{{{read
+    qp.sys.read = function(url, opt, callback) {
+        var data, req;
+        if (opt.post) {
+            data = qp.obj.urlEncode(opt.post);
+        }
+        //{{{if nodejs
+        if (qp.env.nodejs) {
+            var options = require("url")["parse"](url);
+
+            if (qp.str.startsWith(url, "http")) {
+                var client;
+
+                if (qp.str.startsWith(url, "http://")) {
+                    client = require("http");
+                } else {
+                    client = require("https");
+                }
+
+                if (opt.post) {
+                    options["method"] = "POST";
+                    options["headers"] = {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                        "Content-Length": data.length
+                    };
+                }
+
+                req = client["request"](options, function(res) {
+                    var acc = "";
+                    res["on"]("data", function(d) {
+                        acc += d;
+                    });
+                    res["on"]("end", function() {
+                        callback(undefined, acc);
+                    });
+                });
+
+                if (opt.post) {
+                    req["write"](data);
+                }
+                req["end"]();
+
+            } else {
+                require("fs")["readFile"](url, opt.encoding || "utf8", callback);
+            }
+            //}}}
+            //{{{if html5
+        } else if (qp.env.html5) {
+            req = new window.XMLHttpRequest();
+            var method = opt.post ? "POST" : "GET";
+            req.open(method, url, true);
+            req.onreadystatechange = function(e) {
+                if (req.readyState === 4) {
+                    if (req.status === 200) {
+                        callback(null, req.responseText);
+                    } else {
+                        callback(req);
+                    }
+                }
+            };
+            if (opt.post) {
+                req.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+                req.send(data);
+            } else {
+                req.send();
+            }
+            //}}}
+        } else {
+            throw "unsupported";
+        }
+    };
+    //}}}
     // TODO local storage {{{
-    if (qp.platform.nodejs) {
+    if (qp.env.nodejs) {
         (function() {
             //TODO: change api
             var db = qp.fn.trycatch(function() {
@@ -755,7 +1080,7 @@ qp.dev = {};
             }, function() {
                 return {};
             });
-            var syncLocalStorage = qp.fn.throttledFn(function() {
+            var syncLocalStorage = qp.fn.throttle(function() {
                 require("fs")["writeFile"](process["env"]["HOME"] + "/data/local.sqlite3", JSON.stringify(db, null, "  "));
             });
             var lastSync = 0;
@@ -779,10 +1104,25 @@ qp.dev = {};
             }
         };
     } //}}}
+    qp.test("qp.sys", function(test) { //{{{
+        if (qp.env.nodejs) {
+            var jsontest = test.suite("load/save-JSON");
+            var result = qp.sys.loadJSONSync("/does/not/exists", 1);
+            jsontest.assertEqual(result, 1);
+            qp.sys.saveJSON("/tmp/exports-save-json-testb", 2);
+            qp.sys.saveJSON("/tmp/exports-save-json-test", 2, function() {
+                result = qp.sys.loadJSONSync("/tmp/exports-save-json-test", 1);
+                jsontest.assertEqual(result, 2);
+                jsontest.done();
+            });
+        }
+        test.done();
+    });
+    //}}}
     //}}}
     // qp.V2d {{{
     /** simple 2d vector
-     * @constructor 
+     * @constructor
      * @param {number} x
      * @param {number} y
      */
@@ -962,7 +1302,7 @@ qp.dev = {};
         run();
     }; //}}}
     */
-    qp.graphUpdateParents = function(graph) { //{{{
+    qp.graph.updateParents = function(graph) { //{{{
         qp.obj.forEach(graph, function(_, node) {
             node.parents = {};
         });
@@ -972,9 +1312,9 @@ qp.dev = {};
             });
         });
     }; //}}}
-    qp.traverseDAG = function(graph) { //{{{
+    qp.graph.traverseDAG = function(graph) { //{{{
         var result = [];
-        qp.graphUpdateParents(graph);
+        qp.graph.updateParents(graph);
         var visited = {};
         var prevLength = -1;
         while (result.length !== prevLength) {
@@ -998,7 +1338,7 @@ qp.dev = {};
         }
         return result;
     }; //}}}
-    qp.ensureNode = function(graph, name) { //{{{
+    qp.graph.ensureNode = function(graph, name) { //{{{
         if (!graph[name]) {
             graph[name] = {
                 id: name,
@@ -1006,129 +1346,22 @@ qp.dev = {};
             };
         }
     }; //}}}
-    qp.addEdge = function(graph, from, to) { //{{{
-        qp.ensureNode(graph, from);
-        qp.ensureNode(graph, to);
+    qp.graph.addEdge = function(graph, from, to) { //{{{
+        qp.graph.ensureNode(graph, from);
+        qp.graph.ensureNode(graph, to);
         graph[from].children[to] = graph[from].children[to] || {};
     }; //}}}
-    qp.testGraph = function(test) { //{{{
+    qp.test("qp.graph", function(test) { //{{{
         var g = {};
-        qp.addEdge(g, "a", "b");
-        qp.addEdge(g, "b", "c");
-        qp.addEdge(g, "a", "c");
-        test.assertEqual(JSON.stringify(qp.traverseDAG(g)), "[\"a\",\"b\",\"c\"]");
-        qp.graphUpdateParents(g);
+        qp.graph.addEdge(g, "a", "b");
+        qp.graph.addEdge(g, "b", "c");
+        qp.graph.addEdge(g, "a", "c");
+        test.assertEqual(JSON.stringify(qp.graph.traverseDAG(g)), "[\"a\",\"b\",\"c\"]");
+        qp.graph.updateParents(g);
         test.assert(qp.obj.empty(g["a"].parents), "a has no parents");
         test.assert(g["c"].parents["a"], "c has parent a");
         test.done();
-    }; //}}}
-    // }}}
-    // test {{{
-    // TestSuite class {{{
-    /** @constructor */
-    function TestSuite(name, doneFn) { //{{{
-        this.name = name;
-        this.suites = 1;
-        this.errCount = 0;
-        if (doneFn) {
-            this.doneFn = doneFn;
-        }
-    } //}}}
-    TestSuite.prototype.fail = function(expr, desc) { //{{{
-        ++this.errCount;
-        console.log("Fail in " + this.name + ": " + desc);
-    }; //}}}
-    TestSuite.prototype.assert = function(expr, desc) { //{{{
-        if (!expr) {
-            ++this.errCount;
-            console.log("Assert in " + this.name + ": " + desc);
-        }
-    }; //}}}
-    TestSuite.prototype.assertEqual = function(expr1, expr2, desc) { //{{{
-        if (expr1 !== expr2) {
-            ++this.errCount;
-            console.log("Assert in " + this.name + ": " + desc);
-        }
-    }; //}}}
-    TestSuite.prototype.done = function() { //{{{
-        this.suites -= 1;
-        this._cleanup();
-    }; //}}}
-    TestSuite.prototype.suite = function(name) { //{{{
-        var result = new TestSuite(this.name + "#" + name, this.doneFn);
-        result.parent = this;
-        this.suites += 1;
-        return result;
-    }; //}}}
-    TestSuite.prototype._cleanup = function() { //{{{
-        if (this.suites === 0) {
-            if (this.doneFn) {
-                this.doneFn(this.errCount);
-            }
-            if (this.parent) {
-                this.parent.errCount += this.errCount;
-                this.parent.suites -= 1;
-                this.parent._cleanup();
-            }
-        }
-    }; //}}}
-    //}}}
-    function testClient(test) { //{{{
-        test.done();
-    }
-    if (qp.platform.html5) {
-        window["testClient"] = testClient;
-    }
-    //}}}
-    function runTests() { //{{{
-        var Browser = require("zombie");
-        var test = new TestSuite("BibData", process["exit"]);
-
-        // testServer(test.suite("server"));
-
-        // start the client-test via zombie
-        var clientSuite = test.suite("client");
-        var browser = new Browser();
-        browser["visit"]("http://" + qp.host + ":" + qp.port, {
-            debug: true
-        })["then"](function() {
-            browser["window"]["testClient"](clientSuite);
-        })["fail"](function() {
-            clientSuite.fail("could not start client-test");
-            test.done();
-        });
-        test.done();
-    } //}}}
-    // }}}
-    // Testrunner {{{
-    qp.test = function(test) {
-        if (qp.platform.nodejs) {
-            var jsontest = test.create("load/save-JSON");
-            var result = qp.sys.loadJSONSync("/does/not/exists", 1);
-            jsontest.assertEqual(result, 1);
-            qp.sys.saveJSON("/tmp/exports-save-json-testb", 2);
-            qp.sys.saveJSON("/tmp/exports-save-json-test", 2, function() {
-                result = qp.sys.loadJSONSync("/tmp/exports-save-json-test", 1);
-                jsontest.assertEqual(result, 2);
-                jsontest.done();
-            });
-        }
-        var count = 0;
-        var obj = {
-            a: 1,
-            b: 2
-        };
-        qp.obj.forEach(obj, function(key, val) {
-            test.assert(key && obj[key] === val, "objforeach");
-            ++count;
-        });
-        test.assertEqual(count, 2, "objforeach count");
-        test.assert(qp.str.startsWith("foobarbaz", "foobar"), "strstartswith1");
-        test.assert(!qp.str.startsWith("qoobarbaz", "foobar"), "strstartswith2");
-        test.assert(qp.str.startsWith("foobarbaz", ""), "strstartswith3");
-        test.assert(!qp.str.startsWith("foo", "foobar"), "strstartswith4");
-        test.done();
-    };
+    }); //}}}
     // }}}
     // Client {{{
     //{{{constructor
@@ -1138,6 +1371,18 @@ qp.dev = {};
         this.done = obj.done;
         this.opt = obj.opt || {};
         this.result = undefined;
+    };
+    //}}}
+    //{{{style
+    qp.Client.prototype.style = function(style) {
+        if(typeof style === "function") {
+            this.styleFn = style;
+        } else {
+            this.styleFn = function() { return style; };
+        }
+        if(qp.env.html5) {
+            qp.css.update(this.styleFn);
+        }
     };
     //}}}
     //{{{title
@@ -1150,10 +1395,18 @@ qp.dev = {};
     //{{{jsonml
     /** @param {*} jsonml */
     qp.Client.prototype.jsonml = function(jsonml) {
-        this.result = ["qp:jsonml", {
-            "xmlns:qp": "http://solsort.com/qp"
-        },
-        jsonml];
+        this.result = {
+            qp_jsonml: jsonml
+        };
+        this.done();
+    };
+    //}}}
+    //{{{error
+    /** @param {*} json */
+    qp.Client.prototype.error = function(json) {
+        this.result = {
+            qp_error: json
+        };
         this.done();
     };
     //}}}
@@ -1166,10 +1419,9 @@ qp.dev = {};
     //}}}
     //{{{text
     qp.Client.prototype.text = function(str) {
-        this.result = ["qp:text", {
-            "xmlns:qp": "http://solsort.com/qp"
-        },
-        str];
+        this.result = {
+            qp_text: str
+        };
         this.done();
     };
     //}}}
@@ -1187,15 +1439,15 @@ qp.dev = {};
 
         // extract search/arguments
         var split = qp.str.binSplit(str, "?");
-        var str = split[0];
+        str = split[0];
         var param = split[1];
 
         // use hash as path instead of url if available
-        var split = qp.str.binSplit(str, "#");
+        split = qp.str.binSplit(str, "#");
         str = split[1] || split[0];
 
         // extract path and filetype
-        var split = qp.str.binSplit(str, ".");
+        split = qp.str.binSplit(str, ".");
 
         // create result object
         var result = {};
@@ -1211,12 +1463,22 @@ qp.dev = {};
             });
         }
         return result;
-    }
+    };
     //}}}
     //{{{add
-    /** add a new route @param {string} path path for the route @param {function(qp.Client)} fn */
+    /** add a new route @param {string} path path for the route. @param {function(qp.Client)} fn */
     qp.route.add = function(path, fn) {
         routes[path.toLowerCase()] = fn;
+    }; //}}}
+    //{{{rpc
+    qp.route.rpc = function(path, opt, fn) {
+        qp.sys.read("http://" + qp.host + ":" + qp.port + "/" + path + ".json", {
+            post: {
+                qp_route: JSON.stringify(opt)
+            }
+        }, function(err, data) {
+            fn(err, JSON.parse(data));
+        });
     }; //}}}
     //{{{lookupRoute
     /** given a path, return the corresponding handling function @param {string} path */
@@ -1236,7 +1498,6 @@ qp.dev = {};
             route.args = route.path;
             route.path = undefined;
         } else {
-            console.log(route.path, path);
             route.args = route.path.slice(path.length).split("/").filter(qp.fn.id);
             route.path = path;
         }
@@ -1246,92 +1507,129 @@ qp.dev = {};
     //{{{systemCurrent
     /** get the current path/arguments/... @return {Object} */
     qp.route.systemCurrent = function() {
-        if (qp.platform.nodejs) {
+        var route = {};
+
+        if (qp.env.nodejs) {
             var argv = process["argv"];
-            return {
-                path: argv[2] || ""
-            }
-            /*
-            var key = "path";
-            var result = {};
-            for (var i = 2; i < argv.length; ++i) {
-                if (argv[i][0] === "-") {
-                    key = argv[i].replace(/^--?/, "");
-                    if (!result[key]) {
-                        result[key] = [];
-                    }
-                } else {
-                    qp.obj.listAdd(result, key, argv[i]);
-                }
-            }
-            */
+            route.path = argv[2] || "";
         }
-        if (qp.platform.html5) {
-            var path = (location.hash || location.pathname).slice(1);
-            var type = path.split(".")[1];
-            path = path.split(".")[0];
-            var result = {
-                path: [path],
-                type: type && [type]
-            };
-            location.search.slice(1).split("&").forEach(function(str) {
-                var split = str.split("=");
-                param[split[0]] = [split[1]];
-            });
+        if (qp.env.html5) {
+            route.path = (location.hash || location.pathname).slice(1);
         }
-        return result;
+
+        var dotIndex = route.path.indexOf(".");
+        if (dotIndex !== -1) {
+            route.type = route.path.slice(dotIndex + 1);
+            route.path = route.path.slice(0, dotIndex);
+        }
+        return route;
     };
     //}}}
     //{{{main
     function main() {
         var route = qp.route.systemCurrent();
         var fn = qp.route.lookup(route);
-        var client = new qp.Client({
-            route: route,
-            done: function() {
-                if (this.result[0] === "qp:text") {
-                    console.log(this.result[2]);
+        var doneFn;
+        if (qp.env.html5) {
+            doneFn = function() {
+                var result = this.result;
+                if (result.qp_jsonml) {
+                    document.body.innerHTML = qp.jsonml.toString(result.qp_jsonml);
+                } else {
+                    console.log(result);
+                }
+            };
+        } else {
+            doneFn = function() {
+                if (this.result.qp_text) {
+                    console.log(this.result.qp_text);
+                } else if (this.result.qp_jsonml) {
+                    console.log(this.result.qp_jsonml);
                 } else {
                     console.log(this.result);
                 }
-            }
+            };
+        }
+        var client = new qp.Client({
+            route: route,
+            done: doneFn
         });
         fn(client);
     }
     qp.fn.nextTick(main);
     //}}}
+    //}}}
     // builtin routes {{{
+    //{{{static file
+    qp.route.staticFile = function(path, filename) {
+        qp.route.add(path, function(client) {
+            qp.sys.read(filename, {
+                encoding: "utf8"
+            }, function(err, data) {
+                if (err) throw err;
+                client.text(data);
+            });
+        });
+    };
+    //}}}
     // dev-server {{{
     qp.route.devServer = function(client) {
         var server = function(req, res) {
             var route = qp.route.fromUrl(req.url);
             var fn = qp.route.lookup(route);
-            var client = new qp.Client({
-                route: route,
-                done: function() {
-                    var json = this.result;
-                    var result = undefined;
-                    if (json[1] && json[1]["xmlns:qp"] === "http://solsort.com/qp") {
-                        if (json[0] === "qp:jsonml") {
-                            result = qp.jsonml.toString(["html", ["head", ["title", this.opt.title]],
-                                ["body", json[2]]
-                            ]);
-                        } else {
-                            result = String(json[2]);
-                        }
-                    } else {
-                        result = require("util")["inspect"](json, false, null);
-                    }
-                    res["end"](result);
-                }
+            var client;
+            var data = "";
+            req["setEncoding"]("utf8");
+            req["on"]("data", function(chunk) {
+                data += chunk;
             });
-            fn(client);
+            req["on"]("end", function() {
+                if (data) {
+                    data = qp.obj.urlDecode(data);
+                    if (data["qp_route"]) {
+                        qp.obj.extend(route, JSON.parse(data["qp_route"]));
+                    }
+                }
+
+                client = new qp.Client({
+                    route: route,
+                    done: function() {
+                        var json = this.result;
+                        var result;
+                        if (json.qp_jsonml) {
+                            result = qp.jsonml.toString(["html", ["head", ["title", this.opt.title]],
+                                ["body", json.qp_jsonml, ["script", {
+                                    src: "http://closure-library.googlecode.com/svn/trunk/closure/goog/base.js"
+                                }, ""],
+                                    ["script", "require=function(){return function(){}}"],
+                                    ["script", {
+                                        src: "/scripts/qp.js"
+                                    }, ""],
+                                    ["script", {
+                                        src: "/scripts/main.js"
+                                    }, ""]
+                                ]
+                            ]);
+                        } else if (json.qp_text) {
+                            result = String(json.qp_text);
+                        } else {
+
+                            result = JSON.stringify(json);
+                        }
+                        res["end"](result);
+                    }
+                });
+
+                fn(client);
+            });
         };
         var app = require("http")["createServer"](server);
         var io = require("socket.io")["listen"](app);
         app["listen"](qp.port, qp.host, function() {
             console.log("dev-server running on", qp.host + ":" + qp.port);
         });
+        qp.route.staticFile("scripts/qp", __filename);
+        qp.route.staticFile("scripts/main", process["argv"][1]);
     };
     //}}}
     //{{{build
@@ -1354,8 +1652,9 @@ qp.dev = {};
                 if (count === 0) {
                     callback(platform);
                 }
-            };
+            }
 
+            var fs = require("fs");
             // read the app source code
             fs["readFile"](appSource, "utf8", function(err, data) {
                 if (err) throw err;
@@ -1405,16 +1704,36 @@ qp.dev = {};
         });
     };
     //}}}
+    //{{{test
+    qp.route.test = function(client) {
+        var test = new TestSuite("root", testDone);
+        test.timeout(5 * 60 * 1000);
+        for (var key in qp.tests) {
+            qp.tests[key](test.suite(key));
+        }
+        test.done();
+
+        function testDone() {
+            console.log("Tests done.");
+            if (test.errorCount !== 0) {
+                console.log(test.errorCount + "errors occured.");
+            }
+            if (qp.env.nodejs) {
+                process.exit(test.errorCount);
+            }
+        }
+    };
+    //}}}
     //{{{register default routes
-    if (typeof BUILTIN_ROUTES !== "undefined" ? BUILTIN_ROUTES : true) {
-        if (qp.platform.nodejs) {
+    if (!qp.env.compiled) {
+        if (qp.env.nodejs) {
             qp.route.add("jsdoc", qp.route.jsdoc);
             qp.route.add("build", qp.route.build);
+            qp.route.add("test", qp.route.test);
             qp.route.add("dev-server", qp.route.devServer);
         }
     }
     //}}}
-    // }}}
     //}}}
     // css/dom-processing-monad{{{
     // DomProcess {{{
