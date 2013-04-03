@@ -65,6 +65,7 @@ open `http://localhost:1234/` in browser to visit app
     - testrunner
 - Toolbox
     - utilities for running: js-beautify, closure-compiler, js-hint, travis-ci, testling, npm-packaging building
+
 # Notes
 - external libraries
     - general libraries
@@ -89,6 +90,8 @@ open `http://localhost:1234/` in browser to visit app
         - gjs 
         - npm-module
         - winjs 
+        - appjs
+        - tidesdk
         - chrome-extension/web-store 
         - facebook/html5/distribution 
         - chrome-apps 
