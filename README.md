@@ -1,4 +1,4 @@
-[![logo](https://ssl.solsort.com/github-solsort.png?qp)](https://ssl.solsort.com/github-solsort.html?qp)
+![logo](https://solsort.com/_logo.png)
 [![ci](https://secure.travis-ci.org/rasmuserik/qp.png)](http://travis-ci.org/rasmuserik/qp)
 
 # qp JavaScript library
